@@ -1,0 +1,23 @@
+# Foundry (forge) typical .gitignore
+
+# Build output
+out/
+artifacts/
+cache/
+broadcast/
+
+# Environment files
+.env
+
+# Forge coverage files
+coverage/
+coverage.json
+
+# Foundry test logs
+*.t.sol.log
+
+# VSCode
+.vscode/
+
+# OS junk
+lib/

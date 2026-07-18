@@ -1,0 +1,21 @@
+# Environment variables
+.env
+.env.local
+.env*.local
+
+docker-build
+# Smart contracts
+sc/out/
+sc/cache/
+sc/broadcast/
+
+# Node
+web/node_modules/
+web/.next/
+web/out/
+
+# System
+.DS_Store
+*.swp
+*.swo
+*~

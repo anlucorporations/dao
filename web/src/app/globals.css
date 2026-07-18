@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+/* ===================== LIGHT MODE (Default) ===================== */
+:root {
+  color-scheme: light;
+
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #eef1f5;
+  --bg-hover: #f0f1f3;
+
+  /* Text Colors */
+  --text-primary: #0a0e27;
+  --text-secondary: #3d4556;
+  --text-tertiary: #5a6572;
+  --text-light: #8b92a0;
+
+  /* Border Colors */
+  --border-primary: #d0d5dd;
+  --border-secondary: #e5e8ed;
+
+  /* Component Colors */
+  --card-bg: #ffffff;
+  --card-border: #d0d5dd;
+  --card-shadow: rgba(0, 0, 0, 0.04);
+
+  /* Input Colors */
+  --input-bg: #ffffff;
+  --input-border: #d0d5dd;
+  --input-focus: #3b82f6;
+  --input-text: #0a0e27;
+
+  /* Accent Colors */
+  --accent-blue: #2563eb;
+  --accent-green: #059669;
+  --accent-purple: #7c3aed;
+  --accent-red: #dc2626;
+
+  /* Header */
+  --header-bg: #ffffff;
+  --header-border: #d0d5dd;
+  --header-shadow: rgba(0, 0, 0, 0.04);
+}
+
+/* ===================== DARK MODE ===================== */
+:root.dark {
+  color-scheme: dark;
+
+  /* Background Colors */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1a2844;
+  --bg-tertiary: #263857;
+  --bg-hover: #1a2332;
+
+  /* Text Colors */
+  --text-primary: #f0f4f8;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #94a3b8;
+  --text-light: #64748b;
+
+  /* Border Colors */
+  --border-primary: #334155;
+  --border-secondary: #1e293b;
+
+  /* Component Colors */
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --card-shadow: rgba(0, 0, 0, 0.3);
+
+  /* Input Colors */
+  --input-bg: #0f172a;
+  --input-border: #475569;
+  --input-focus: #60a5fa;
+  --input-text: #f0f4f8;
+
+  /* Accent Colors */
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-purple: #a78bfa;
+  --accent-red: #f87171;
+
+  /* Header */
+  --header-bg: #1e293b;
+  --header-border: #334155;
+  --header-shadow: rgba(0, 0, 0, 0.3);
+}
+
+/* ===================== TYPOGRAPHY SCALE ===================== */
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: var(--font-geist-sans);
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0.3px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.75px;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+h5 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+h6 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Paragraphs */
+p {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+p.lead {
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+/* Links */
+a {
+  color: var(--accent-blue);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* Lists */
+ul, ol {
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  margin: 0;
+  line-height: 1.7;
+}
+
+/* ===================== FORM ELEMENTS ===================== */
+input,
+textarea,
+select {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-color: var(--input-border);
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-light);
+  font-weight: 400;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* Labels */
+label {
+  display: block;
+  font-weight: 500;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+
+/* ===================== BUTTONS ===================== */
+button {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+/* ===================== SCROLLBAR ===================== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-primary);
+  opacity: 0.8;
+}
+
+/* ===================== SMALL SCREENS ===================== */
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: 1.875rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+}
