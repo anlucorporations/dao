@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cooperativa-postgres
+    environment:
+      POSTGRES_DB: cooperativa_cappones
+      POSTGRES_USER: anlucorporations
+      POSTGRES_PASSWORD: KeLuDa.2324
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anlucorporations -d cooperativa_cappones"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  anvil:
+    build:
+      context: ./contracts
+      dockerfile: Dockerfile.anvil
+    container_name: cooperativa-anvil
+    ports:
+      - "8545:8545"
+    volumes:
+      - ./contracts/deployments:/app/deployments
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: cooperativa-web
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://anlucorporations:KeLuDa.2324@postgres:5432/cooperativa_cappones?schema=public"
+      NEXT_PUBLIC_ANVIL_RPC: "http://localhost:8545"
+      JWT_SECRET: "super_secret_jwt_key_local_dev_2026"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      anvil:
+        condition: service_started
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: cooperativa-pgadmin
+    profiles: ["admin"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.test
+      PGADMIN_DEFAULT_PASSWORD: admin_local_dev
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

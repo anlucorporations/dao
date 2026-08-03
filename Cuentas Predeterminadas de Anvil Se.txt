@@ -1,0 +1,8 @@
+Cuentas Predeterminadas de Anvil: Se mapearán 5 cuentas iniciales de Anvil (Chain ID 31337) en el seed de la base de datos (Presidente, Vicepresidente, Secretario, Contralor, Contador):
+
+Cuenta 0 (Admin / Presidenta / Deployer): 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+Cuenta 1 (Vicepresidente): 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+Cuenta 2 (Secretario): 0x3C44CdDDB6a900fa2b585dd299e03d12FA4293BC
+Cuenta 3 (Contralor): 0x90F79bf6EB2c4f6703055175b43657a0501a3341
+Cuenta 4 (Contador): 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
+Build de Producción: La aplicación web se compilará y ejecutará en modo Producción (next build + next start) dentro del contenedor Docker.

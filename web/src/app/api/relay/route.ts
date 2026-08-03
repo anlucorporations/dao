@@ -1,119 +1,143 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ethers } from 'ethers';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getForwarderRead, getVotacionWrite, getAdminSigner } from "@/lib/ethers";
+import { ethers } from "ethers";
+import { getClientIp } from "@/lib/request";
 
-const RELAYER_PRIVATE_KEY = process.env.RELAYER_PRIVATE_KEY || '';
-const FORWARDER_ADDRESS = process.env.NEXT_PUBLIC_FORWARDER_CONTRACT_ADDRESS || '';
-const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:8545';
-
-const FORWARDER_ABI = [
-  'function execute((address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data) req, bytes signature) payable returns (bool, bytes)',
-  'function getNonce(address from) view returns (uint256)'
-];
-
-// Track locked users to prevent concurrent transactions
-const userLocks = new Set<string>();
-
-export async function POST(request: NextRequest) {
-  let userAddress: string | null = null;
-  
+/**
+ * POST /api/relay
+ * Recibe un voto firmado y lo ejecuta en la blockchain pagando el gas
+ */
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    const { request: forwardRequest, signature } = body;
+    const { request, signature, walletAddress } = await req.json();
 
-    if (!forwardRequest || !signature || !forwardRequest.from) {
+    if (!request || !signature || !walletAddress) {
       return NextResponse.json(
-        { error: 'Missing request or signature' },
+        { error: "Request, firma y wallet requeridos" },
         { status: 400 }
       );
     }
 
-    // Check if user is already processing a transaction
-    userAddress = forwardRequest.from.toLowerCase() as string;
-   
-    // Lock the user
-    if (userLocks.has(userAddress)) {
-      return NextResponse.json(
-        { error: 'User already has a transaction in progress' },
-        { status: 429 }
-      );
-    }
-    userLocks.add(userAddress);
-
-    // Validate relayer configuration
-    if (!RELAYER_PRIVATE_KEY) {
-      console.error('RELAYER_PRIVATE_KEY not configured');
-      return NextResponse.json(
-        { error: 'Relayer not configured' },
-        { status: 500 }
-      );
-    }
-
-    if (!FORWARDER_ADDRESS) {
-      console.error('NEXT_PUBLIC_FORWARDER_CONTRACT_ADDRESS not configured');
-      return NextResponse.json(
-        { error: 'Forwarder contract not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Connect to blockchain
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const relayer = new ethers.Wallet(RELAYER_PRIVATE_KEY, provider);
-    const forwarder = new ethers.Contract(FORWARDER_ADDRESS, FORWARDER_ABI, relayer);
-
-    // Check current nonce on forwarder
-    const currentNonce = await forwarder.getNonce(forwardRequest.from);
-
-    // Validate nonce before executing
-    const requestedNonce = BigInt(forwardRequest.nonce);
-    if (requestedNonce !== currentNonce) {
-      console.error('Nonce mismatch! Expected:', currentNonce.toString(), 'Got:', forwardRequest.nonce);
-      return NextResponse.json(
-        { error: 'Nonce mismatch', expected: currentNonce.toString(), received: forwardRequest.nonce },
-        { status: 400 }
-      );
-    }
-
-    // Try to estimate gas first
-    try {
-      await forwarder.execute.estimateGas(forwardRequest, signature);
-    } catch (gasError) {
-      console.error('Gas estimation failed:', gasError);
-    }
-
-    // Execute the meta-transaction
-    const tx = await forwarder.execute(forwardRequest, signature, {
-      gasLimit: 3000000
+    // 1. Verificar que es socio activo
+    const socio = await prisma.socio.findUnique({
+      where: { walletAddress: walletAddress.toLowerCase() },
     });
 
-    // Wait for confirmation
+    if (!socio || !socio.activo) {
+      return NextResponse.json(
+        { error: "No es socio activo" },
+        { status: 403 }
+      );
+    }
+
+    // 2. Verificar firma en el forwarder
+    const forwarder = getForwarderRead();
+    const esValida = await forwarder.verify(request, signature);
+
+    if (!esValida) {
+      return NextResponse.json(
+        { error: "Firma invalida" },
+        { status: 401 }
+      );
+    }
+
+    // 3. Verificar nonce (anti-replay)
+    const nonceEsperado = await forwarder.getNonce(walletAddress);
+    if (BigInt(request.nonce) !== nonceEsperado) {
+      return NextResponse.json(
+        { error: "Nonce incorrecto - posible ataque de repeticion" },
+        { status: 401 }
+      );
+    }
+
+    // 4. Ejecutar la transacción con el signer del admin (paga el gas)
+    const signer = getAdminSigner();
+    const forwarderWrite = new ethers.Contract(
+      process.env.NEXT_PUBLIC_FORWARDER_ADDRESS!,
+      ["function execute(tuple(address from, address to, uint256 value, uint256 gas, uint256 nonce, bytes data) calldata req, bytes calldata signature) external payable returns (bool, bytes memory)"],
+      signer
+    );
+
+    const tx = await forwarderWrite.execute(request, signature, {
+      gasLimit: 200000,
+    });
+
     const receipt = await tx.wait();
 
-    // Unlock the user
-    if (userAddress) {
-      userLocks.delete(userAddress);
-    }
+    // 5. Guardar voto en base de datos (hash secreto)
+    const hashSecreto = ethers.keccak256(
+      ethers.solidityPacked(
+        ["address", "uint256", "uint8"],
+        [walletAddress, request.propuestaId, request.voto]
+      )
+    );
+
+    await prisma.voto.create({
+      data: {
+        propuestaId: request.propuestaId,
+        socioId: socio.id,
+        tipo: request.voto === 0 ? "ACEPTADA" : request.voto === 1 ? "RECHAZADA" : "ABSTENCION",
+        hashSecreto,
+        txHash: receipt.hash,
+      },
+    });
+
+    // 6. Auditoría
+    await prisma.auditoriaLog.create({
+      data: {
+        accion: "VOTO_RELAY",
+        entidad: "Voto",
+        detalle: `Voto relay ejecutado - Propuesta ${request.propuestaId}`,
+        walletEjecutor: walletAddress,
+        ipAddress: getClientIp(req),
+      },
+    });
 
     return NextResponse.json({
       success: true,
       txHash: receipt.hash,
-      blockNumber: receipt.blockNumber
+      message: "Voto registrado exitosamente",
     });
+  } catch (error: any) {
+    console.error("Error en relay:", error);
 
-  } catch (error: unknown) {
-    console.error('Error relaying transaction:', error);
-
-    // Unlock the user in case of error
-    if (userAddress) {
-      userLocks.delete(userAddress);
+    // Si el relayer externo falla, notificar para Plan B
+    if (error.message?.includes("insufficient funds")) {
+      return NextResponse.json(
+        { error: "Relayer sin fondos - activar Plan B", activarPlanB: true },
+        { status: 503 }
+      );
     }
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      {
-        error: 'Failed to relay transaction',
-        message: errorMessage
-      },
+      { error: "Error al procesar voto: " + error.message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * GET /api/relay
+ * Verifica estado del relayer (balance, conexión)
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
+    const adminWallet = new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY!, provider);
+
+    const balance = await provider.getBalance(adminWallet.address);
+    const balanceMatic = ethers.formatEther(balance);
+
+    return NextResponse.json({
+      activo: parseFloat(balanceMatic) > 0.5,
+      balance: balanceMatic,
+      wallet: adminWallet.address,
+      red: process.env.NEXT_PUBLIC_CHAIN_ID,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { activo: false, error: "No se pudo verificar el relayer" },
       { status: 500 }
     );
   }

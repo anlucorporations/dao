@@ -1,21 +1,27 @@
-# Environment variables
+# Entorno y secretos
 .env
-.env.local
-.env*.local
+.env.*
+!.env.example
+!.env.local.example
 
-docker-build
-# Smart contracts
-sc/out/
-sc/cache/
-sc/broadcast/
+# Node / Next.js
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
 
-# Node
-web/node_modules/
-web/.next/
-web/out/
+# Prisma / bases locales
+*.db
+*.db-journal
 
-# System
+# Foundry
+contracts/lib/
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Sistema operativo y editores
 .DS_Store
-*.swp
-*.swo
-*~
+Thumbs.db
+.vscode/

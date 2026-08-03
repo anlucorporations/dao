@@ -1,0 +1,222 @@
+// ============================================================
+// COOPERATIVA "LOS CAPPONES" - Esquema PostgreSQL (Prisma)
+// Fase 3: Codificación - Sprint 1
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ ENUMS ============
+enum Cargo {
+  PRESIDENTE
+  VICEPRESIDENTE
+  SECRETARIO
+  CONTRALOR
+  CONTADOR
+}
+
+enum EstadoInvitacion {
+  PENDIENTE
+  USADA
+  EXPIRADA
+}
+
+enum TipoAporte {
+  INSCRIPCION
+  ADICIONAL
+}
+
+enum EstadoPostulacion {
+  ABIERTA
+  CERRADA_APROBADA
+  CERRADA_RECHAZADA
+}
+
+enum TipoPropuesta {
+  INVERSION
+  ADMINISTRATIVA
+}
+
+enum EstadoPropuesta {
+  BORRADOR
+  POR_DISCUTIR
+  APROBADA
+  RECHAZADA
+  APELADA
+  EJECUTADA
+}
+
+enum TipoVoto {
+  ACEPTADA
+  RECHAZADA
+  ABSTENCION
+}
+
+// ============ TABLAS ============
+
+model Socio {
+  id                String   @id @default(uuid())
+  walletAddress     String   @unique
+  nombre            String
+  cedula            String   @unique
+  sexo              String
+  fechaNacimiento   DateTime
+  estadoCivil       String
+  telefono          String
+  correo            String
+  direccion         String
+  activo            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  directivo         Directivo?
+  aportes           Aporte[]
+  postulaciones     Postulacion[]
+  votos             Voto[]
+  auditoriaLogs     AuditoriaLog[]
+}
+
+model Directivo {
+  id          String   @id @default(uuid())
+  socioId     String   @unique
+  cargo       Cargo
+  fechaInicio DateTime
+  fechaFin    DateTime
+  activo      Boolean  @default(true)
+  secret2FA   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  socio       Socio    @relation(fields: [socioId], references: [id])
+  avales      Aval[]
+}
+
+model Invitacion {
+  id            String           @id @default(uuid())
+  codigo        String           @unique
+  nombre        String
+  cedula        String
+  correo        String
+  walletAddress String?
+  estado        EstadoInvitacion @default(PENDIENTE)
+  creadoPor     String
+  fechaUso      DateTime?
+  createdAt     DateTime         @default(now())
+}
+
+model Aporte {
+  id        String    @id @default(uuid())
+  socioId   String
+  tipo      TipoAporte
+  monto     String    // Guardado como string para manejar BigInt de wei
+  txHash    String?
+  fecha     DateTime  @default(now())
+
+  socio     Socio     @relation(fields: [socioId], references: [id])
+}
+
+model Postulacion {
+  id            String             @id @default(uuid())
+  socioId       String
+  cargo         Cargo
+  fechaInicio   DateTime           @default(now())
+  fechaFin      DateTime
+  votosFavor    Int                @default(0)
+  votosContra   Int                @default(0)
+  estado        EstadoPostulacion  @default(ABIERTA)
+  propuestaChainId String?         // ID en blockchain
+  createdAt     DateTime           @default(now())
+
+  socio         Socio              @relation(fields: [socioId], references: [id])
+}
+
+model Propuesta {
+  id              String          @id @default(uuid())
+  propuestaChainId String?        @unique
+  nombre          String
+  descripcion     String
+  monto           String
+  walletReceptora String
+  tipo            TipoPropuesta
+  estado          EstadoPropuesta @default(BORRADOR)
+  disponible      Boolean         @default(true)
+  fechaCreacion   DateTime        @default(now())
+  fechaAprobacion DateTime?
+  fechaApelacion  DateTime?
+  deadline        DateTime?
+  intentos        Int             @default(0)
+  creadorId       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  avales          Aval[]
+  votos           Voto[]
+  acta            Acta?
+}
+
+model Aval {
+  id            String    @id @default(uuid())
+  propuestaId   String
+  directivoId   String
+  firmado       Boolean   @default(false)
+  fechaFirma    DateTime?
+  createdAt     DateTime  @default(now())
+
+  propuesta     Propuesta @relation(fields: [propuestaId], references: [id])
+  directivo     Directivo @relation(fields: [directivoId], references: [id])
+
+  @@unique([propuestaId, directivoId])
+}
+
+model Voto {
+  id          String   @id @default(uuid())
+  propuestaId String
+  socioId     String
+  tipo        TipoVoto
+  hashSecreto String   // Hash enmascarado para auditoría
+  txHash      String?
+  fecha       DateTime @default(now())
+
+  propuesta   Propuesta @relation(fields: [propuestaId], references: [id])
+  socio       Socio     @relation(fields: [socioId], references: [id])
+
+  @@unique([propuestaId, socioId])
+}
+
+model Acta {
+  id              String   @id @default(uuid())
+  propuestaId     String   @unique
+  contenido       Json     // Datos estructurados de la votación
+  urlPdf          String?
+  hashBlockchain  String?
+  fechaGeneracion DateTime @default(now())
+
+  propuesta       Propuesta @relation(fields: [propuestaId], references: [id])
+}
+
+model AuditoriaLog {
+  id            String   @id @default(uuid())
+  accion        String
+  entidad       String
+  entidadId     String?
+  detalle       String
+  walletEjecutor String
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  socio         Socio?   @relation(fields: [walletEjecutor], references: [walletAddress], map: "auditoria_socio_fk")
+}
+
+model Configuracion {
+  id          String   @id @default(uuid())
+  clave       String   @unique
+  valor       String
+  descripcion String?
+  updatedAt   DateTime @updatedAt
+}
