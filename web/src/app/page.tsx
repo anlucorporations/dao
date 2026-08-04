@@ -24,6 +24,12 @@ export default function HomePage() {
   const [token2FA, setToken2FA] = useState("");
   const [msgEstado, setMsgEstado] = useState<string | null>(null);
 
+  function disconnectWallet() {
+    setWallet(null);
+    setUserRole("Socio / Usuario");
+    setError(null);
+  }
+
   async function connectWallet() {
     setError(null);
     if (typeof window === "undefined" || !(window as any).ethereum) {
@@ -53,6 +59,34 @@ export default function HomePage() {
       setError("No se pudo conectar MetaMask: " + (err.message || err));
     }
   }
+
+  // Escuchar cambios de cuenta en MetaMask
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).ethereum) {
+      const provider = (window as any).ethereum;
+      const handleAccountsChanged = (accounts: string[]) => {
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          const addr = accounts[0];
+          setWallet(addr);
+          if (addr.toLowerCase() === "0xa0ee7a142d267c1f36714e4a8f75612f20a79720") {
+            setUserRole("SuperUsuario (anlu) / Presidenta");
+          } else if (addr.toLowerCase() === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") {
+            setUserRole("Vicepresidente");
+          } else {
+            setUserRole("Socio Cooperativista");
+          }
+        }
+      };
+      provider.on("accountsChanged", handleAccountsChanged);
+      return () => {
+        if (provider.removeListener) {
+          provider.removeListener("accountsChanged", handleAccountsChanged);
+        }
+      };
+    }
+  }, []);
 
   async function cargarPropuestas() {
     try {
@@ -139,13 +173,23 @@ export default function HomePage() {
         </nav>
 
         {/* WALLET STATUS */}
-        <div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {wallet ? (
-            <div className="wallet-badge">
-              <span className="status-dot"></span>
-              <span>{wallet.substring(0, 6)}...{wallet.substring(wallet.length - 4)}</span>
-              <span className="badge badge-info">{userRole}</span>
-            </div>
+            <>
+              <div className="wallet-badge">
+                <span className="status-dot"></span>
+                <span>{wallet.substring(0, 6)}...{wallet.substring(wallet.length - 4)}</span>
+                <span className="badge badge-info">{userRole}</span>
+              </div>
+              <button
+                className="button-outline"
+                style={{ borderColor: "var(--error)", color: "var(--error)", padding: "6px 12px", fontSize: "0.85rem" }}
+                onClick={disconnectWallet}
+                title="Desvincular cuenta de MetaMask"
+              >
+                Desvincular
+              </button>
+            </>
           ) : (
             <button className="button" onClick={connectWallet}>Conectar MetaMask</button>
           )}
