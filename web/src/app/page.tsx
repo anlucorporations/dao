@@ -58,7 +58,7 @@ export default function HomePage() {
         setChainId(currentChain);
 
         if (addr.toLowerCase() === "0xa0ee7a142d267c1f36714e4a8f75612f20a79720") {
-          setUserRole("SuperUsuario (anlu) / Presidenta");
+          setUserRole("SuperUsuario (anlu) / Presidente");
         } else if (addr.toLowerCase() === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") {
           setUserRole("Vicepresidente");
         } else if (DIRECTIVOS_WALLETS.includes(addr.toLowerCase())) {
@@ -83,7 +83,7 @@ export default function HomePage() {
           const addr = accounts[0];
           setWallet(addr);
           if (addr.toLowerCase() === "0xa0ee7a142d267c1f36714e4a8f75612f20a79720") {
-            setUserRole("SuperUsuario (anlu) / Presidenta");
+            setUserRole("SuperUsuario (anlu) / Presidente");
           } else if (addr.toLowerCase() === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") {
             setUserRole("Vicepresidente");
           } else if (DIRECTIVOS_WALLETS.includes(addr.toLowerCase())) {
@@ -518,7 +518,7 @@ export default function HomePage() {
                 <p className="text-muted">Cuentas directivas con permisos administrativos en la plataforma:</p>
                 <div className="grid" style={{ marginTop: "16px" }}>
                   <div className="stat-card">
-                    <span className="badge badge-success">PRESIDENTA (SuperUsuario)</span>
+                    <span className="badge badge-success">PRESIDENTE (SuperUsuario)</span>
                     <h3 style={{ marginTop: "6px" }}>anlu</h3>
                     <small>Cédula: V-12533620</small><br />
                     <small>Wallet: 0xa0Ee...9720</small>
