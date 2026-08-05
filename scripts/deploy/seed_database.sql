@@ -22,13 +22,13 @@ INSERT INTO "Socio" (
     "updatedAt"
 ) VALUES (
     gen_random_uuid(),
-    '0x2d3db17af7a2e9c256c9204ae8881d63ad1df833',
+    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb9226',
     'Angel Lucci',
     'V-12533620',
     'M',
     '1980-01-01',
     'Soltero',
-    '+58 412-0000000',
+    '+58 412-0358824',
     'admin@loscappones.com',
     'Dirección administrativa',
     true,
@@ -92,7 +92,7 @@ INSERT INTO "AuditoriaLog" (
     'Configuracion',
     NULL,
     'Sistema desplegado en Polygon Amoy. SuperUsuario: Angel Lucci (V-12533620)',
-    '0x2d3db17af7a2e9c256c9204ae8881d63ad1df833',
+    '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb9226',
     '127.0.0.1',
     NOW()
 );

@@ -9,14 +9,16 @@ import "../src/ActaHashRegistry.sol";
 
 contract DeployLocal is Script {
     function run() external {
-        // Usar la Private Key de la cuenta #9 de Anvil (SuperUsuario anlu)
-        uint256 deployerPrivateKey = 0x2a871d0798f97d796df285775602922437370edd16347100108392d40b03220a;
+        // Cuenta #0 de Anvil para financiar y ejecutar la transacción de despliegue
+        uint256 deployerPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
         address deployer = vm.addr(deployerPrivateKey);
+        address anluOwner = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
         console.log("Desplegando contratos en red local (Anvil)...");
-        console.log("Deployer (anlu):", deployer);
+        console.log("Deployer:", deployer);
+        console.log("SuperUsuario Owner (anlu):", anluOwner);
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         MinimalForwarder forwarder = new MinimalForwarder();
         console.log("Forwarder:", address(forwarder));
@@ -36,6 +38,7 @@ contract DeployLocal is Script {
 
         actaRegistry.transferOwnership(address(votacion));
         cooperativa.setVotacionContract(address(votacion));
+        cooperativa.transferOwnership(anluOwner);
 
         vm.stopBroadcast();
 

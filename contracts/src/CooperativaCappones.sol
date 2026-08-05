@@ -110,6 +110,11 @@ contract CooperativaCappones {
         emit VotacionContractActualizado(_votacionContract);
     }
 
+    function transferOwnership(address newOwner) external onlyOwner {
+        require(newOwner != address(0), "Direccion invalida");
+        owner = newOwner;
+    }
+
     function pagarPropuestaInversion(address payable _receptora, uint256 _monto) external onlyVotacion {
         require(address(this).balance >= _monto, "Fondos en tesoreria insuficientes");
         require(_receptora != address(0), "Direccion receptora invalida");

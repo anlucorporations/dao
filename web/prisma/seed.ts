@@ -17,9 +17,9 @@ async function main() {
     nombre: "anlu",
     cedula: "V-12533620",
     correo: "anlucorporations@gmail.com",
-    walletAddress: "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720", // Anvil #9
+    walletAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // Anvil #9
     cargo: Cargo.PRESIDENTE,
-    telefono: "+584120000000",
+    telefono: "+584120358824",
     direccion: "Sede Principal Cooperativa Los Cappones",
     sexo: "M",
     fechaNacimiento: new Date("1985-01-01"),

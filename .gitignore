@@ -25,3 +25,8 @@ contracts/broadcast/
 .DS_Store
 Thumbs.db
 .vscode/
+.deps/
+artifacts/
+KeLuDa.2324*
+web/tsconfig.tsbuildinfo
+
