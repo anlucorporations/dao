@@ -159,6 +159,7 @@ export default function HomePage() {
         {activeTab === "propuestas" && (
           <PropuestasDashboard
             isDirectivo={isDirectivo}
+            isGovernanceOwner={isGovernanceOwner}
             wallet={wallet}
             onEmitirVoto={handleEmitirVoto}
           />

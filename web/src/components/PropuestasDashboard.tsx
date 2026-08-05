@@ -69,15 +69,60 @@ const MOCK_PROPUESTAS: Propuesta[] = [
 
 interface PropuestasDashboardProps {
   isDirectivo: boolean;
+  isGovernanceOwner: boolean;
   wallet: string | null;
   onEmitirVoto: (propuestaId: number, voto: "favor" | "contra" | "abstencion") => void;
 }
 
-export default function PropuestasDashboard({ isDirectivo, wallet, onEmitirVoto }: PropuestasDashboardProps) {
+export default function PropuestasDashboard({
+  isDirectivo,
+  isGovernanceOwner,
+  wallet,
+  onEmitirVoto,
+}: PropuestasDashboardProps) {
+  const [propuestasList, setPropuestasList] = useState<Propuesta[]>(MOCK_PROPUESTAS);
   const [filterEstatus, setFilterEstatus] = useState<string>("todas");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Campos del formulario flotante
+  const [nuevoTitulo, setNuevoTitulo] = useState("");
+  const [nuevaDesc, setNuevaDesc] = useState("");
+  const [nuevoMonto, setNuevoMonto] = useState("");
+  const [nuevaReceptora, setNuevaReceptora] = useState("");
+  const [nuevaPublicada, setNuevaPublicada] = useState(true);
+
+  function handleCreatePropuesta(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevoTitulo || !nuevaDesc || !nuevoMonto) return;
+
+    const fechaHoy = new Date().toISOString().split("T")[0];
+    const nuevaProp: Propuesta = {
+      id: propuestasList.length + 1,
+      titulo: nuevoTitulo,
+      descripcion: nuevaDesc,
+      montoETH: parseFloat(nuevoMonto) || 0,
+      destinatario: nuevaReceptora || "0x0000000000000000000000000000000000000000",
+      estatus: nuevaPublicada ? "En Votacion" : "Borrador",
+      publicada: nuevaPublicada,
+      votosFavor: 0,
+      votosContra: 0,
+      votosAbstencion: 0,
+      totalVotantes: 0,
+      fechaCreacion: fechaHoy,
+      ultimaModificacion: fechaHoy,
+    };
+
+    setPropuestasList([nuevaProp, ...propuestasList]);
+    setShowCreateModal(false);
+    setNuevoTitulo("");
+    setNuevaDesc("");
+    setNuevoMonto("");
+    setNuevaReceptora("");
+    setNuevaPublicada(true);
+  }
 
   // Filtrar propuestas borradores si NO es directivo
-  const propuestasVisibles = MOCK_PROPUESTAS.filter((p) => {
+  const propuestasVisibles = propuestasList.filter((p) => {
     if (!p.publicada && !isDirectivo) return false;
     if (filterEstatus === "todas") return true;
     return p.estatus.toLowerCase().includes(filterEstatus.toLowerCase());
@@ -94,7 +139,14 @@ export default function PropuestasDashboard({ isDirectivo, wallet, onEmitirVoto 
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {/* Botón flotante para Owner, Presidente o Contralor */}
+          {isGovernanceOwner && (
+            <button className="button" onClick={() => setShowCreateModal(true)}>
+              ➕ Crear Nueva Propuesta
+            </button>
+          )}
+
           <select
             className="form-select"
             value={filterEstatus}
@@ -113,6 +165,108 @@ export default function PropuestasDashboard({ isDirectivo, wallet, onEmitirVoto 
       {!isDirectivo && (
         <div className="notice" style={{ background: "#edf2fe", borderColor: "#bfdbfe", color: "#1e40af" }}>
           ℹ️ <strong>Aviso de Transparencia:</strong> Las propuestas en fase de borrador o preparación técnica interna por la Junta Directiva permanecen reservadas hasta su publicación oficial a la asamblea.
+        </div>
+      )}
+
+      {/* Formulario Flotante Modal para Cargar Propuesta (Exclusivo Governance) */}
+      {showCreateModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.5)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 300,
+          }}
+        >
+          <div className="card" style={{ width: "min(600px, 92%)", background: "#ffffff", padding: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
+              <h2 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a" }}>
+                ➕ Formulario de Carga de Propuesta
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                style={{ background: "transparent", border: "none", fontSize: "1.2rem", color: "#94a3b8", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePropuesta}>
+              <div className="form-group">
+                <label className="form-label">Título de la Propuesta</label>
+                <input
+                  className="form-input"
+                  value={nuevoTitulo}
+                  onChange={(e) => setNuevoTitulo(e.target.value)}
+                  placeholder="Ej. Proyecto de Inversión Tecnológica Node v3"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Descripción Detallada</label>
+                <textarea
+                  className="form-textarea"
+                  rows={4}
+                  value={nuevaDesc}
+                  onChange={(e) => setNuevaDesc(e.target.value)}
+                  placeholder="Detalla los objetivos, justificación y alcance del proyecto..."
+                  required
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                <div className="form-group">
+                  <label className="form-label">Monto a Transferir (ETH)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.01"
+                    value={nuevoMonto}
+                    onChange={(e) => setNuevoMonto(e.target.value)}
+                    placeholder="10.0"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Visibilidad Inicial</label>
+                  <select
+                    className="form-select"
+                    value={nuevaPublicada ? "publica" : "borrador"}
+                    onChange={(e) => setNuevaPublicada(e.target.value === "publica")}
+                  >
+                    <option value="publica">Publicar en Votación Abierta</option>
+                    <option value="borrador">Borrador Reservado (Directivos)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Dirección Wallet Receptora</label>
+                <input
+                  className="form-input"
+                  value={nuevaReceptora}
+                  onChange={(e) => setNuevaReceptora(e.target.value)}
+                  placeholder="0x..."
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "24px" }}>
+                <button type="button" className="button-outline" onClick={() => setShowCreateModal(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="button">
+                  Cargar Propuesta
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
