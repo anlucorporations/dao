@@ -294,7 +294,7 @@ export default function HomePage() {
               <div className="stat-card">
                 <div className="text-muted">SuperUsuario / Owner</div>
                 <div className="stat-value">anlu</div>
-                <small className="text-muted">V-12533620 (Anvil Account #9)</small>
+                <small className="text-muted">V-12533620 (Cuenta Principal / Anvil #1)</small>
               </div>
 
               <div className="stat-card">
