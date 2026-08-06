@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-// ABIs simplificados (en producción se importan desde artifacts)
+// ABIs simplificados
 export const COOPERATIVA_ABI = [
   "function registrarSocio(address _wallet) external",
   "function depositarAporte() external payable",
@@ -43,9 +43,24 @@ export const ACTA_ABI = [
   "function actas(uint256) external view returns (bytes32 hash, uint256 propuestaId, uint256 fechaRegistro, bool valida)",
 ];
 
+/**
+ * Obtener la URL del RPC adecuándose a ejecución local y en Google Cloud
+ */
+export function getRpcUrl(): string {
+  if (process.env.RPC_URL) return process.env.RPC_URL;
+  if (process.env.NEXT_PUBLIC_RPC_URL) return process.env.NEXT_PUBLIC_RPC_URL;
+  if (process.env.NEXT_PUBLIC_ANVIL_RPC && !process.env.NEXT_PUBLIC_ANVIL_RPC.includes("localhost")) {
+    return process.env.NEXT_PUBLIC_ANVIL_RPC;
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8545`;
+  }
+  return "http://anvil:8545";
+}
+
 // Provider para lecturas (sin necesidad de wallet)
 export function getProvider() {
-  return new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
+  return new ethers.JsonRpcProvider(getRpcUrl());
 }
 
 // Provider con signer para transacciones (backend)

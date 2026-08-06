@@ -41,6 +41,17 @@ export default function HomePage() {
     showNotification("Wallet desconectada correctamente.");
   }
 
+  function getRoleForWallet(addr: string): string {
+    const lower = addr.toLowerCase();
+    if (lower === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") return "Presidente (Ana Lucía Morales)";
+    if (lower === "0x70997970c51812dc3a010c7d01b50e0d17dc79c8") return "Vicepresidente (Carlos Mendoza)";
+    if (lower === "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc") return "Secretaria (Elena Rivas)";
+    if (lower === "0x90f79bf6eb2c4f6703055175b43657a0501a3341") return "Contralor (Roberto Fernández)";
+    if (lower === "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65") return "Contadora (Patricia Silva)";
+    if (DIRECTIVOS_WALLETS.includes(lower)) return "Junta Directiva";
+    return "Socio Cooperativista";
+  }
+
   async function connectWallet() {
     if (typeof window === "undefined" || !(window as any).ethereum) {
       alert("MetaMask no está instalada. Por favor instala la extensión MetaMask.");
@@ -52,19 +63,7 @@ export default function HomePage() {
       if (accounts && accounts[0]) {
         const addr = accounts[0];
         setWallet(addr);
-
-        if (addr.toLowerCase() === "0xa0ee7a142d267c1f36714e4a8f75612f20a79720") {
-          setUserRole("Presidente (anlu)");
-        } else if (addr.toLowerCase() === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") {
-          setUserRole("Vicepresidente");
-        } else if (addr.toLowerCase() === "0x3c44cdd16053471b02368b1e529e732f7922a346") {
-          setUserRole("Contralor Institucional");
-        } else if (DIRECTIVOS_WALLETS.includes(addr.toLowerCase())) {
-          setUserRole("Junta Directiva");
-        } else {
-          setUserRole("Socio Cooperativista");
-        }
-
+        setUserRole(getRoleForWallet(addr));
         showNotification("Wallet conectada con éxito.");
       }
     } catch (err: any) {
@@ -87,17 +86,7 @@ export default function HomePage() {
         } else {
           const addr = accounts[0];
           setWallet(addr);
-          if (addr.toLowerCase() === "0xa0ee7a142d267c1f36714e4a8f75612f20a79720") {
-            setUserRole("Presidente (anlu)");
-          } else if (addr.toLowerCase() === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") {
-            setUserRole("Vicepresidente");
-          } else if (addr.toLowerCase() === "0x3c44cdd16053471b02368b1e529e732f7922a346") {
-            setUserRole("Contralor Institucional");
-          } else if (DIRECTIVOS_WALLETS.includes(addr.toLowerCase())) {
-            setUserRole("Junta Directiva");
-          } else {
-            setUserRole("Socio Cooperativista");
-          }
+          setUserRole(getRoleForWallet(addr));
         }
       };
       provider.on("accountsChanged", handleAccountsChanged);

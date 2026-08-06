@@ -48,12 +48,26 @@ export const TIEMPOS = {
   APELACION_HORAS: 24,
 } as const;
 
+const getAnvilDynamicEndpoint = () => {
+  if (process.env.NEXT_PUBLIC_ANVIL_RPC && !process.env.NEXT_PUBLIC_ANVIL_RPC.includes("localhost")) {
+    return process.env.NEXT_PUBLIC_ANVIL_RPC;
+  }
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:8545`;
+  }
+  return "http://34.132.231.119:8545";
+};
+
 export const REDES = {
   ANVIL: {
     chainId: 31337,
-    name: "Foundry Anvil Local",
-    rpc: process.env.NEXT_PUBLIC_ANVIL_RPC || "http://localhost:8545",
-    explorer: "http://localhost:8545",
+    name: "Foundry Anvil Local / Cloud",
+    get rpc() {
+      return getAnvilDynamicEndpoint();
+    },
+    get explorer() {
+      return getAnvilDynamicEndpoint();
+    },
   },
   AMOY: {
     chainId: 80002,
@@ -68,4 +82,3 @@ export const REDES = {
     explorer: "https://polygonscan.com",
   },
 } as const;
-
