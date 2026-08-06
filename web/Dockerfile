@@ -2,14 +2,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ENV PRISMA_HIDE_UPDATE_MESSAGE=true
+ENV CHECKPOINT_DISABLE=1
+
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm ci
+RUN npm install
 
 COPY . .
 
-RUN npx prisma generate
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -28,4 +30,4 @@ COPY --from=builder /app/tsconfig.json ./
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push && npx tsx prisma/seed.ts && npm run start"]
+CMD ["sh", "-c", "./node_modules/.bin/prisma db push && ./node_modules/.bin/tsx prisma/seed.ts && npm run start"]
