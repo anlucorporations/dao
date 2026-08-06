@@ -26,7 +26,8 @@
   },
   "optionalDependencies": {
     "@next/swc-linux-x64-musl": "15.5.22",
-    "@next/swc-linux-x64-gnu": "15.5.22"
+    "@next/swc-linux-x64-gnu": "15.5.22",
+    "@esbuild/linux-x64": "0.28.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
