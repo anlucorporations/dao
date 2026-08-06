@@ -12,7 +12,7 @@ RUN npm install --prefer-offline --no-audit --no-fund
 
 COPY . .
 
-RUN chmod -R +x ./node_modules
+RUN chmod -R +x ./node_modules/.bin ./node_modules/@esbuild ./node_modules/@next ./node_modules/@prisma
 RUN ./node_modules/.bin/next build
 
 FROM node:20-alpine AS runner
@@ -29,7 +29,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
 
-RUN chmod -R +x ./node_modules
+RUN chmod -R +x ./node_modules/.bin ./node_modules/@esbuild ./node_modules/@next ./node_modules/@prisma
 
 EXPOSE 3000
 
