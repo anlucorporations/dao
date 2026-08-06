@@ -25,8 +25,8 @@
     "tsx": "^4.0.0"
   },
   "optionalDependencies": {
-    "@next/swc-linux-x64-musl": "15.0.0",
-    "@next/swc-linux-x64-gnu": "15.0.0"
+    "@next/swc-linux-x64-musl": "15.5.22",
+    "@next/swc-linux-x64-gnu": "15.5.22"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
