@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -8,14 +8,13 @@ ENV CHECKPOINT_DISABLE=1
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN npm install
+RUN npm install --no-audit --no-fund
 
 COPY . .
 
-RUN npx prisma generate
 RUN npm run build
 
-FROM node:20-slim AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
