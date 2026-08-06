@@ -8,18 +8,20 @@ import ActasModulo from "@/components/ActasModulo";
 import FinanzasModulo from "@/components/FinanzasModulo";
 import SociosCrudModulo from "@/components/SociosCrudModulo";
 import MiBalanceModulo from "@/components/MiBalanceModulo";
+import MetricsModulo from "@/components/MetricsModulo";
 
 const DIRECTIVOS_WALLETS = [
-  "0xa0ee7a142d267c1f36714e4a8f75612f20a79720", // Presidente / SuperUsuario (anlu)
-  "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Vicepresidente
-  "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // Secretaria
-  "0x3c44cdd16053471b02368b1e529e732f7922a346", // Contralor
-  "0x90f79bf6eb2c4f8096638522f8a92790e72a0e00", // Contadora
+  "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Presidente (Cuenta #0 Anvil)
+  "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // Vicepresidente (Cuenta #1 Anvil)
+  "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc", // Secretario (Cuenta #2 Anvil)
+  "0x90f79bf6eb2c4f6703055175b43657a0501a3341", // Contralor (Cuenta #3 Anvil)
+  "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65", // Contador (Cuenta #4 Anvil)
 ];
 
 const GOVERNANCE_WALLETS = [
-  "0xa0ee7a142d267c1f36714e4a8f75612f20a79720", // Presidente / Owner
-  "0x3c44cdd16053471b02368b1e529e732f7922a346", // Contralor
+  "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Presidente
+  "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // Vicepresidente
+  "0x90f79bf6eb2c4f6703055175b43657a0501a3341", // Contralor
 ];
 
 export default function HomePage() {
@@ -174,6 +176,8 @@ export default function HomePage() {
         {activeTab === "finanzas" && <FinanzasModulo />}
 
         {activeTab === "socios" && <SociosCrudModulo />}
+
+        {activeTab === "metrics" && <MetricsModulo />}
       </main>
     </div>
   );

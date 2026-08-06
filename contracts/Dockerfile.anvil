@@ -7,4 +7,4 @@ COPY . .
 USER root
 RUN chmod +x docker-entrypoint.sh
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "-c", "anvil --host 0.0.0.0 --port 8545 --allow-origin '*' --chain-id 31337 --gas-price 1"]
