@@ -2,8 +2,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-ENV PRISMA_HIDE_UPDATE_MESSAGE=true
-ENV CHECKPOINT_DISABLE=1
+COPY package*.json ./
+COPY prisma ./prisma/
+
+RUN npm ci
 
 COPY . .
 
