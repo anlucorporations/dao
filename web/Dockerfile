@@ -5,11 +5,6 @@ WORKDIR /app
 ENV PRISMA_HIDE_UPDATE_MESSAGE=true
 ENV CHECKPOINT_DISABLE=1
 
-COPY package*.json ./
-COPY prisma ./prisma/
-
-RUN npm install --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000
-
 COPY . .
 
 RUN npx prisma generate
