@@ -1,9 +1,11 @@
 import { PrismaClient, Cargo } from "@prisma/client";
+import * as fs from "fs";
+import * as path from "path";
 
 const prisma = new PrismaClient();
 
-// Cuentas predeterminadas de Anvil (Chain ID 31337)
-const ANVIL_ACCOUNTS = [
+// Mapeo base de cuentas Anvil (Chain ID 31337)
+const DEFAULT_ANVIL_ACCOUNTS = [
   {
     index: 0,
     walletAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -35,7 +37,7 @@ const ANVIL_ACCOUNTS = [
   {
     index: 2,
     walletAddress: "0x3C44CdDDB6a900fa2b585dd299e03d12FA4293BC",
-    privateKey: "0x5de4111da505504f2c316411e83624d479d0b3f2de9fa0390193604f57ce825c",
+    privateKey: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
     nombre: "Elena Beatriz Rivas",
     cedula: "V-16789456",
     correo: "secretaria@loscappones.coop",
@@ -48,7 +50,7 @@ const ANVIL_ACCOUNTS = [
   },
   {
     index: 3,
-    walletAddress: "0x90F79bf6EB2c4f6703055175b43657a0501a3341",
+    walletAddress: "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
     privateKey: "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
     nombre: "Roberto José Fernández",
     cedula: "V-18234567",
@@ -77,7 +79,7 @@ const ANVIL_ACCOUNTS = [
   {
     index: 5,
     walletAddress: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
-    privateKey: "0x8b3a350cf5c343fa13fe3a159e1b096a3168ea6500567d23a10c6f3581f7d54c",
+    privateKey: "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba",
     nombre: "Gabriel Antonio Torres",
     cedula: "V-20123456",
     correo: "gabriel.torres@loscappones.coop",
@@ -91,7 +93,7 @@ const ANVIL_ACCOUNTS = [
   {
     index: 6,
     walletAddress: "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
-    privateKey: "0x92db14e403b83dfe3df233524e23a30087f12363d6609904992e984f6c4af266",
+    privateKey: "0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
     nombre: "Mariana Isabel Castillo",
     cedula: "V-21345678",
     correo: "mariana.castillo@loscappones.coop",
@@ -105,7 +107,7 @@ const ANVIL_ACCOUNTS = [
   {
     index: 7,
     walletAddress: "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
-    privateKey: "0x4b57788d2b420d6965ce9d506151297b6992d92723b4361609248a4c86456900",
+    privateKey: "0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356",
     nombre: "Javier Enrique Paredes",
     cedula: "V-22456789",
     correo: "javier.paredes@loscappones.coop",
@@ -119,7 +121,7 @@ const ANVIL_ACCOUNTS = [
   {
     index: 8,
     walletAddress: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
-    privateKey: "0xdbda8c7d044fb067883cd95682461fd6e6c5e10172ba4728699f5784af7788c1",
+    privateKey: "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
     nombre: "Sofia Valentina Gómez",
     cedula: "V-23567890",
     correo: "sofia.gomez@loscappones.coop",
@@ -133,7 +135,7 @@ const ANVIL_ACCOUNTS = [
   {
     index: 9,
     walletAddress: "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
-    privateKey: "0x2a871d0798f97d796df285775602922437370edd16347100108392d40b03220a",
+    privateKey: "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
     nombre: "Luis Fernando Alvarado",
     cedula: "V-24678901",
     correo: "luis.alvarado@loscappones.coop",
@@ -146,14 +148,107 @@ const ANVIL_ACCOUNTS = [
   },
 ];
 
+async function fetchLiveAnvilAccounts(): Promise<string[]> {
+  const rpcEndpoints = [
+    process.env.NEXT_PUBLIC_ANVIL_RPC_URL,
+    "http://anvil:8545",
+    "http://127.0.0.1:8545",
+    "http://localhost:8545",
+  ].filter(Boolean) as string[];
+
+  for (const url of rpcEndpoints) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "eth_accounts", params: [], id: 1 }),
+      });
+      const data = await res.json();
+      if (data?.result && Array.isArray(data.result) && data.result.length > 0) {
+        console.log(`🔗 Conectado dinámicamente a Anvil RPC (${url}). ${data.result.length} cuentas capturadas.`);
+        return data.result;
+      }
+    } catch {
+      // Ignorar y probar siguiente endpoint
+    }
+  }
+  console.log("ℹ️ No se pudo conectar a un nodo Anvil activo en este paso. Se usarán las 10 cuentas estáticas predeterminadas.");
+  return [];
+}
+
+function exportAnvilAccountsMd(accounts: typeof DEFAULT_ANVIL_ACCOUNTS) {
+  const mdContent = `# 🔑 Cuentas Nativas de Anvil Desplegadas y Registradas en PostgreSQL
+
+Este documento registra oficialmente las **10 Cuentas Nativas del servicio Anvil (Chain ID 31337)** capturadas dinámicamente desde el servicio RPC e introducidas en la base de datos PostgreSQL de la Cooperativa Los Cappones.
+
+---
+
+## 🏛️ Junta Directiva (Cuentas 0 a 4)
+
+| # | Cargo / Rol | Nombre Registrado | Dirección Wallet (Anvil Address) | Clave Privada (Private Key) | Saldo Inicial |
+|---|---|---|---|---|---|
+${accounts
+  .slice(0, 5)
+  .map(
+    (a) =>
+      `| **${a.index}** | **${a.cargo}** | ${a.nombre} | \`${a.walletAddress}\` | \`${a.privateKey}\` | \`10,000.00 ETH\` |`
+  )
+  .join("\n")}
+
+---
+
+## 👤 Socios Cooperativistas (Cuentas 5 a 9)
+
+| # | Cargo / Rol | Nombre Registrado | Dirección Wallet (Anvil Address) | Clave Privada (Private Key) | Saldo Inicial |
+|---|---|---|---|---|---|
+${accounts
+  .slice(5, 10)
+  .map(
+    (a) =>
+      `| **${a.index}** | **Socio** | ${a.nombre} | \`${a.walletAddress}\` | \`${a.privateKey}\` | \`10,000.00 ETH\` |`
+  )
+  .join("\n")}
+
+---
+
+### ℹ️ Parámetros de Red Anvil
+- **Chain ID:** \`31337\`
+- **RPC Endpoint Local:** \`http://127.0.0.1:8545\`
+- **RPC Endpoint Google Cloud:** \`http://34.132.231.119:8545\`
+- **HD Mnemonic:** \`test test test test test test test test test test test junk\`
+- **Derivation Path:** \`m/44'/60'/0'/0/\`
+`;
+
+  try {
+    const rootPath = path.resolve(__dirname, "../../ANVIL_ACCOUNTS.md");
+    fs.writeFileSync(rootPath, mdContent, "utf-8");
+    console.log(`📄 Archivo de cuentas generado/actualizado exitosamente en: ${rootPath}`);
+  } catch (err) {
+    console.warn("No se pudo escribir el archivo ANVIL_ACCOUNTS.md:", err);
+  }
+}
+
 async function main() {
-  console.log("Iniciando seed de base de datos (10 Cuentas Nativas de Anvil)...");
+  console.log("Iniciando seed de base de datos (Consulta Dinámica a Anvil RPC)...");
+
+  const liveAddresses = await fetchLiveAnvilAccounts();
+
+  // Actualizar las direcciones si Anvil respondió dinámicamente
+  const finalAccounts = DEFAULT_ANVIL_ACCOUNTS.map((acc, idx) => {
+    if (liveAddresses[idx]) {
+      return { ...acc, walletAddress: liveAddresses[idx] };
+    }
+    return acc;
+  });
+
+  // Exportar el archivo ANVIL_ACCOUNTS.md
+  exportAnvilAccountsMd(finalAccounts);
 
   // 1. Configuración de versión de sistema
   await prisma.configuracion.upsert({
     where: { clave: "VERSION_SISTEMA" },
-    update: { valor: "2.0.0", descripcion: "Entorno DAO Los Cappones - 10 Cuentas Anvil" },
-    create: { clave: "VERSION_SISTEMA", valor: "2.0.0", descripcion: "Entorno DAO Los Cappones - 10 Cuentas Anvil" },
+    update: { valor: "2.1.0", descripcion: "Entorno DAO Los Cappones - 10 Cuentas Dinámicas de Anvil" },
+    create: { clave: "VERSION_SISTEMA", valor: "2.1.0", descripcion: "Entorno DAO Los Cappones - 10 Cuentas Dinámicas de Anvil" },
   });
 
   const fechaInicio = new Date();
@@ -161,7 +256,7 @@ async function main() {
   fechaFin.setFullYear(fechaInicio.getFullYear() + 2);
 
   // 2. Insertar las 10 cuentas de Anvil como Socios (y Directivos si poseen cargo)
-  for (const acc of ANVIL_ACCOUNTS) {
+  for (const acc of finalAccounts) {
     const socio = await prisma.socio.upsert({
       where: { walletAddress: acc.walletAddress },
       update: {
@@ -210,13 +305,13 @@ async function main() {
     }
   }
 
-  // 3. Limpiar cualquier propuesta previa para garantizar base de datos limpia sin mocks
+  // 3. Limpiar propuestas y actas
   await prisma.acta.deleteMany({});
   await prisma.voto.deleteMany({});
   await prisma.aval.deleteMany({});
   await prisma.propuesta.deleteMany({});
 
-  console.log("Seed completado exitosamente: 10 Cuentas de Anvil registradas. Tabla de propuestas limpia.");
+  console.log("Seed completado exitosamente: Cuentas de Anvil sincronizadas dinámicamente con PostgreSQL.");
 }
 
 main()
