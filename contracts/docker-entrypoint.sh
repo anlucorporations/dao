@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Iniciando nodo Anvil..."
-anvil --host 0.0.0.0 --port 8545 --gas-price 1 &
+anvil --host 0.0.0.0 --port 8545 --allow-origin "*" --chain-id 31337 --gas-price 1 &
 ANVIL_PID=$!
 
 echo "Esperando que Anvil esté listo..."
