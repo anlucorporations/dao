@@ -5,13 +5,7 @@ WORKDIR /app
 ENV PRISMA_HIDE_UPDATE_MESSAGE=true
 ENV CHECKPOINT_DISABLE=1
 
-COPY package*.json ./
-COPY node_modules ./node_modules
-COPY prisma ./prisma/
-COPY src ./src
-COPY public ./public
-COPY next.config.ts ./
-COPY tsconfig.json ./
+COPY . .
 
 RUN ./node_modules/.bin/prisma generate
 RUN ./node_modules/.bin/next build
