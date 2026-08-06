@@ -12,8 +12,9 @@ RUN npm install --prefer-offline --no-audit --no-fund
 
 COPY . .
 
-RUN npx prisma generate
-RUN npm run build
+RUN chmod -R +x ./node_modules/.bin
+RUN ./node_modules/.bin/prisma generate
+RUN ./node_modules/.bin/next build
 
 FROM node:20-alpine AS runner
 
