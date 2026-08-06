@@ -9,7 +9,7 @@ RUN npm ci
 
 COPY . .
 
-RUN ./node_modules/.bin/prisma generate
+RUN npx --no-install prisma generate
 RUN npm run build
 
 FROM node:20-alpine AS runner
