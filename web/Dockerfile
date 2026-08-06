@@ -12,7 +12,7 @@ RUN npm install --prefer-offline --no-audit --no-fund
 
 COPY . .
 
-RUN chmod -R +x ./node_modules/.bin
+RUN chmod -R +x ./node_modules
 RUN ./node_modules/.bin/next build
 
 FROM node:20-alpine AS runner
@@ -28,6 +28,8 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
+
+RUN chmod -R +x ./node_modules
 
 EXPOSE 3000
 
