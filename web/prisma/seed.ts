@@ -255,22 +255,18 @@ async function main() {
   const fechaFin = new Date();
   fechaFin.setFullYear(fechaInicio.getFullYear() + 2);
 
-  // 2. Insertar las 10 cuentas de Anvil como Socios (y Directivos si poseen cargo)
+  // 2. Limpiar registros previos para evitar conflictos de cedula o walletAddress
+  await prisma.acta.deleteMany({});
+  await prisma.voto.deleteMany({});
+  await prisma.aval.deleteMany({});
+  await prisma.propuesta.deleteMany({});
+  await prisma.directivo.deleteMany({});
+  await prisma.socio.deleteMany({});
+
+  // 3. Insertar las 10 cuentas de Anvil como Socios (y Directivos si poseen cargo)
   for (const acc of finalAccounts) {
-    const socio = await prisma.socio.upsert({
-      where: { walletAddress: acc.walletAddress },
-      update: {
-        nombre: acc.nombre,
-        cedula: acc.cedula,
-        correo: acc.correo,
-        telefono: acc.telefono,
-        direccion: acc.direccion,
-        sexo: acc.sexo,
-        fechaNacimiento: acc.fechaNacimiento,
-        estadoCivil: acc.estadoCivil,
-        activo: true,
-      },
-      create: {
+    const socio = await prisma.socio.create({
+      data: {
         nombre: acc.nombre,
         cedula: acc.cedula,
         correo: acc.correo,
@@ -285,13 +281,8 @@ async function main() {
     });
 
     if (acc.cargo) {
-      await prisma.directivo.upsert({
-        where: { socioId: socio.id },
-        update: {
-          cargo: acc.cargo,
-          activo: true,
-        },
-        create: {
+      await prisma.directivo.create({
+        data: {
           socioId: socio.id,
           cargo: acc.cargo,
           fechaInicio: fechaInicio,
