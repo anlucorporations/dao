@@ -19,53 +19,7 @@ interface Propuesta {
   ultimaModificacion: string;
 }
 
-const MOCK_PROPUESTAS: Propuesta[] = [
-  {
-    id: 1,
-    titulo: "Adquisición de Servidores de Alta Disponibilidad para Nodo Validator",
-    descripcion: "Compra de infraestructura hardware dedicada para expandir la capacidad computacional de la cooperativa.",
-    montoETH: 5.5,
-    destinatario: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-    estatus: "Aprobada y Ejecutada",
-    publicada: true,
-    votosFavor: 32,
-    votosContra: 4,
-    votosAbstencion: 2,
-    totalVotantes: 38,
-    fechaCreacion: "2026-07-20",
-    ultimaModificacion: "2026-07-22",
-  },
-  {
-    id: 2,
-    titulo: "Fondo de Liquidez para Proyectos Agrícolas Comunitarios",
-    descripcion: "Asignación de capital de trabajo para la primera fase del proyecto de soberanía alimentaria.",
-    montoETH: 12.0,
-    destinatario: "0x3C44CdD16053471b02368B1E529E732F7922a346",
-    estatus: "En Votacion",
-    publicada: true,
-    votosFavor: 20,
-    votosContra: 8,
-    votosAbstencion: 5,
-    totalVotantes: 33,
-    fechaCreacion: "2026-08-01",
-    ultimaModificacion: "2026-08-04",
-  },
-  {
-    id: 3,
-    titulo: "[Borrador Directivo] Proyecto de Auditoría de Seguridad Smart Contracts v2",
-    descripcion: "Contratación de firma externa para auditoría formal de los nuevos contratos de tesorería multifirma.",
-    montoETH: 8.0,
-    destinatario: "0x90F79bf6EB2c4f8096638522f8a92790e72A0e00",
-    estatus: "Borrador",
-    publicada: false, // SOLO VISIBLE PARA JUNTA DIRECTIVA
-    votosFavor: 0,
-    votosContra: 0,
-    votosAbstencion: 0,
-    totalVotantes: 0,
-    fechaCreacion: "2026-08-04",
-    ultimaModificacion: "2026-08-05",
-  },
-];
+const MOCK_PROPUESTAS: Propuesta[] = [];
 
 interface PropuestasDashboardProps {
   isDirectivo: boolean;
@@ -272,7 +226,20 @@ export default function PropuestasDashboard({
 
       {/* Grilla de Propuestas */}
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {propuestasVisibles.map((prop) => {
+        {propuestasVisibles.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📊</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
+              No hay propuestas registradas actualmente
+            </div>
+            <p style={{ fontSize: "0.88rem", marginTop: "4px" }}>
+              {isGovernanceOwner
+                ? "Como miembro directivo autorizado, puedes cargar una nueva propuesta utilizando el botón '➕ Crear Nueva Propuesta' arriba."
+                : "La asamblea no posee propuestas activas en este momento."}
+            </p>
+          </div>
+        ) : (
+          propuestasVisibles.map((prop) => {
           const totalVotos = prop.votosFavor + prop.votosContra + prop.votosAbstencion;
           const pctFavor = totalVotos > 0 ? Math.round((prop.votosFavor / totalVotos) * 100) : 0;
           const pctContra = totalVotos > 0 ? Math.round((prop.votosContra / totalVotos) * 100) : 0;
@@ -405,7 +372,7 @@ export default function PropuestasDashboard({
               )}
             </div>
           );
-        })}
+        }))}
       </div>
     </div>
   );

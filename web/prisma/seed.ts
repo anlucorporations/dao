@@ -210,41 +210,13 @@ async function main() {
     }
   }
 
-  // 3. Crear 2 propuestas iniciales de demostración en PostgreSQL
-  const socioPres = await prisma.socio.findFirst({ where: { walletAddress: ANVIL_ACCOUNTS[0].walletAddress } });
-  if (socioPres) {
-    await prisma.propuesta.upsert({
-      where: { id: "PROP-001" },
-      update: {},
-      create: {
-        id: "PROP-001",
-        nombre: "Adquisición de Equipos de Computación e Infraestructura Web3",
-        descripcion: "Financiamiento para actualización de nodos validadores y desarrollo del frontend institucional.",
-        monto: "5.5",
-        walletReceptora: ANVIL_ACCOUNTS[4].walletAddress,
-        tipo: "INVERSION",
-        estado: "POR_DISCUTIR",
-        creadorId: socioPres.id,
-      },
-    });
+  // 3. Limpiar cualquier propuesta previa para garantizar base de datos limpia sin mocks
+  await prisma.acta.deleteMany({});
+  await prisma.voto.deleteMany({});
+  await prisma.aval.deleteMany({});
+  await prisma.propuesta.deleteMany({});
 
-    await prisma.propuesta.upsert({
-      where: { id: "PROP-002" },
-      update: {},
-      create: {
-        id: "PROP-002",
-        nombre: "Fondo Reserva para Auditoría Contable Externa 2026",
-        descripcion: "Aprobación de fondos presupuestarios para la revisión y certificación financiera independiente.",
-        monto: "2.0",
-        walletReceptora: ANVIL_ACCOUNTS[3].walletAddress,
-        tipo: "ADMINISTRATIVA",
-        estado: "APROBADA",
-        creadorId: socioPres.id,
-      },
-    });
-  }
-
-  console.log("Seed completado exitosamente con las 10 Cuentas de Anvil y datos estructurales.");
+  console.log("Seed completado exitosamente: 10 Cuentas de Anvil registradas. Tabla de propuestas limpia.");
 }
 
 main()
