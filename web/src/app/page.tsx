@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import HeaderNav, { TabType } from "@/components/HeaderNav";
 import LandingPage from "@/components/LandingPage";
 import PropuestasDashboard from "@/components/PropuestasDashboard";
@@ -15,14 +15,14 @@ const DIRECTIVOS_WALLETS = [
   "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Presidente (Cuenta #0 Anvil)
   "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // Vicepresidente (Cuenta #1 Anvil)
   "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc", // Secretario (Cuenta #2 Anvil)
-  "0x90f79bf6eb2c4f6703055175b43657a0501a3341", // Contralor (Cuenta #3 Anvil)
+  "0x90f79bf6eb2c4f870365E785982E1f101E93b906".toLowerCase(), // Contralor (Cuenta #3 Anvil)
   "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65", // Contador (Cuenta #4 Anvil)
 ];
 
 const GOVERNANCE_WALLETS = [
-  "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Presidente
+  "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Presidente / Owner
   "0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // Vicepresidente
-  "0x90f79bf6eb2c4f6703055175b43657a0501a3341", // Contralor
+  "0x90f79bf6eb2c4f870365E785982E1f101E93b906".toLowerCase(), // Contralor
 ];
 
 export default function HomePage() {
@@ -31,29 +31,40 @@ export default function HomePage() {
   const [userRole, setUserRole] = useState<string>("Socio / Visitante");
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Verificación de roles
-  const isDirectivo = wallet ? DIRECTIVOS_WALLETS.includes(wallet.toLowerCase()) : false;
-  const isGovernanceOwner = wallet ? GOVERNANCE_WALLETS.includes(wallet.toLowerCase()) : false;
+  // Verificación de roles optimizada con useMemo
+  const isDirectivo = useMemo(
+    () => (wallet ? DIRECTIVOS_WALLETS.includes(wallet.toLowerCase()) : false),
+    [wallet]
+  );
+  const isGovernanceOwner = useMemo(
+    () => (wallet ? GOVERNANCE_WALLETS.includes(wallet.toLowerCase()) : false),
+    [wallet]
+  );
 
-  function disconnectWallet() {
+  const showNotification = useCallback((msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3500);
+  }, []);
+
+  const disconnectWallet = useCallback(() => {
     setWallet(null);
     setUserRole("Socio / Visitante");
     setActiveTab("inicio");
     showNotification("Wallet desconectada correctamente.");
-  }
+  }, [showNotification]);
 
-  function getRoleForWallet(addr: string): string {
+  const getRoleForWallet = useCallback((addr: string): string => {
     const lower = addr.toLowerCase();
     if (lower === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") return "Contralor / Owner (Ana Lucía Morales)";
     if (lower === "0x70997970c51812dc3a010c7d01b50e0d17dc79c8") return "Vicepresidente (Carlos Mendoza)";
     if (lower === "0x3c44cdddb6a900fa2b585dd299e03d12FA4293BC".toLowerCase()) return "Secretaria (Elena Rivas)";
-    if (lower === "0x90f79bf6eb2c4f870365e785982e1f101e93b906".toLowerCase()) return "Presidente (Roberto Fernández)";
+    if (lower === "0x90f79bf6eb2c4f870365E785982E1f101E93b906".toLowerCase()) return "Presidente (Roberto Fernández)";
     if (lower === "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65") return "Contadora (Patricia Silva)";
     if (DIRECTIVOS_WALLETS.includes(lower)) return "Junta Directiva";
     return "Socio Cooperativista";
-  }
+  }, []);
 
-  async function connectWallet() {
+  const connectWallet = useCallback(async () => {
     if (typeof window === "undefined" || !(window as any).ethereum) {
       alert("MetaMask no está instalada. Por favor instala la extensión MetaMask.");
       return;
@@ -70,12 +81,7 @@ export default function HomePage() {
     } catch (err: any) {
       alert("Error al conectar wallet: " + (err.message || err));
     }
-  }
-
-  function showNotification(msg: string) {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 3500);
-  }
+  }, [getRoleForWallet, showNotification]);
 
   // Escuchar cambios de cuenta en MetaMask
   useEffect(() => {
@@ -97,11 +103,11 @@ export default function HomePage() {
         }
       };
     }
-  }, []);
+  }, [disconnectWallet, getRoleForWallet]);
 
-  function handleEmitirVoto(propuestaId: number, voto: "favor" | "contra" | "abstencion") {
+  const handleEmitirVoto = useCallback((propuestaId: number, voto: "favor" | "contra" | "abstencion") => {
     showNotification(`Voto "${voto.toUpperCase()}" emitido correctamente para la propuesta #${propuestaId}.`);
-  }
+  }, [showNotification]);
 
   return (
     <div className="app-container">

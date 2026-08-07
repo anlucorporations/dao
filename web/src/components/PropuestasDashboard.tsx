@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { formatAddress, formatETH } from "@/lib/utils";
 
 interface Propuesta {
@@ -106,12 +106,14 @@ export default function PropuestasDashboard({
     setNuevaPublicada(true);
   }
 
-  // Filtrar propuestas borradores si NO es directivo
-  const propuestasVisibles = propuestasList.filter((p) => {
-    if (!p.publicada && !isDirectivo) return false;
-    if (filterEstatus === "todas") return true;
-    return p.estatus.toLowerCase().includes(filterEstatus.toLowerCase());
-  });
+  // Filtrar propuestas borradores si NO es directivo (optimizado con useMemo)
+  const propuestasVisibles = useMemo(() => {
+    return propuestasList.filter((p) => {
+      if (!p.publicada && !isDirectivo) return false;
+      if (filterEstatus === "todas") return true;
+      return p.estatus.toLowerCase().includes(filterEstatus.toLowerCase());
+    });
+  }, [propuestasList, isDirectivo, filterEstatus]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>

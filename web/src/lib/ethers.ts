@@ -58,9 +58,14 @@ export function getRpcUrl(): string {
   return "http://anvil:8545";
 }
 
-// Provider para lecturas (sin necesidad de wallet)
-export function getProvider() {
-  return new ethers.JsonRpcProvider(getRpcUrl());
+// Singleton Provider para lecturas (reutiliza conexión TCP/RPC)
+let _cachedProvider: ethers.JsonRpcProvider | null = null;
+
+export function getProvider(): ethers.JsonRpcProvider {
+  if (!_cachedProvider) {
+    _cachedProvider = new ethers.JsonRpcProvider(getRpcUrl());
+  }
+  return _cachedProvider;
 }
 
 // Provider con signer para transacciones (backend)

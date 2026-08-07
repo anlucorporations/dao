@@ -68,14 +68,16 @@ const TODOS_LOS_CARGOS = ["PRESIDENTE", "VICEPRESIDENTE", "SECRETARIO", "CONTRAL
 
 export async function GET() {
   try {
-    const socios = await prisma.socio.findMany({
-      include: { directivo: true },
-    });
-
-    const directivos = await prisma.directivo.findMany({
-      where: { activo: true },
-      include: { socio: true },
-    });
+    // Consultas concurrentes a la base de datos
+    const [socios, directivos] = await Promise.all([
+      prisma.socio.findMany({
+        include: { directivo: true },
+      }),
+      prisma.directivo.findMany({
+        where: { activo: true },
+        include: { socio: true },
+      }),
+    ]);
 
     // Mapear el estado de cada cuenta de Anvil
     const accountsStatus = ANVIL_ACCOUNTS_MASTER.map((acc) => {

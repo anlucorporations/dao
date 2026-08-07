@@ -60,9 +60,9 @@ contract VotacionPropuestas is ERC2771Context {
         uint256 fechaFirma;
     }
 
-    // ============ STATE VARIABLES ============
-    CooperativaCappones public cooperativa;
-    ActaHashRegistry public actaRegistry;
+    // ============ STATE VARIABLES (OPTIMIZED WITH IMMUTABLE) ============
+    CooperativaCappones public immutable cooperativa;
+    ActaHashRegistry public immutable actaRegistry;
 
     uint256 public constant DURACION_INVERSION = 1 days;   // 24h
     uint256 public constant DURACION_ADMIN = 12 hours;       // 12h
