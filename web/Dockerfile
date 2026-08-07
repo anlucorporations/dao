@@ -6,6 +6,8 @@ ENV PRISMA_HIDE_UPDATE_MESSAGE=true
 ENV CHECKPOINT_DISABLE=1
 ENV PATH="/app/node_bin/bin:${PATH}"
 
+RUN mkdir -p /lib64 && ln -s /lib/ld-musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 || true
+
 COPY package*.json ./
 COPY prisma ./prisma/
 COPY node_bin ./node_bin
@@ -22,6 +24,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV PATH="/app/node_bin/bin:${PATH}"
+
+RUN mkdir -p /lib64 && ln -s /lib/ld-musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 || true
 
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_bin ./node_bin
