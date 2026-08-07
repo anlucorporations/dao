@@ -35,6 +35,15 @@ interface SistemaData {
     network: string;
     contracts: ContractInfo[];
   };
+  dbTables?: {
+    socios: any[];
+    directivos: any[];
+    propuestas: any[];
+    votos: any[];
+    avales: any[];
+    actas: any[];
+    configuraciones: any[];
+  };
 }
 
 const CARGOS_DISPONIBLES = [
@@ -50,6 +59,7 @@ export default function SistemaModulo() {
   const [loading, setLoading] = useState(true);
   const [revealedKeys, setRevealedKeys] = useState<Record<number, boolean>>({});
   const [assigningAccount, setAssigningAccount] = useState<AccountStatus | null>(null);
+  const [activeDbTable, setActiveDbTable] = useState<"socios" | "directivos" | "propuestas" | "votos" | "avales" | "actas" | "configuraciones">("socios");
 
   // Form state para asignación
   const [formNombre, setFormNombre] = useState("");
@@ -380,6 +390,306 @@ export default function SistemaModulo() {
           ))}
         </div>
       </div>
+
+      {/* Visor de Contenido de Tablas PostgreSQL */}
+      {data.dbTables && (
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
+            <div>
+              <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a" }}>
+                🗄️ Visor de Tablas de la Base de Datos PostgreSQL
+              </h3>
+              <p style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                Inspección transparente del contenido almacenado en la base de datos de la Cooperativa
+              </p>
+            </div>
+
+            {/* Selector de Tablas */}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {[
+                { id: "socios", label: "👤 Socio", count: data.dbTables.socios.length },
+                { id: "directivos", label: "🏛️ Directivo", count: data.dbTables.directivos.length },
+                { id: "propuestas", label: "📊 Propuesta", count: data.dbTables.propuestas.length },
+                { id: "votos", label: "🗳️ Voto", count: data.dbTables.votos.length },
+                { id: "avales", label: "✍️ Aval", count: data.dbTables.avales.length },
+                { id: "actas", label: "📜 Acta", count: data.dbTables.actas.length },
+                { id: "configuraciones", label: "⚙️ Config", count: data.dbTables.configuraciones.length },
+              ].map((t) => {
+                const isSelected = activeDbTable === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveDbTable(t.id as any)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      border: "1px solid",
+                      borderColor: isSelected ? "#2563eb" : "#cbd5e1",
+                      background: isSelected ? "#eff6ff" : "#ffffff",
+                      color: isSelected ? "#1d4ed8" : "#475569",
+                      fontWeight: isSelected ? 800 : 500,
+                      fontSize: "0.8rem",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <span>{t.label}</span>
+                    <span
+                      style={{
+                        background: isSelected ? "#2563eb" : "#e2e8f0",
+                        color: isSelected ? "#ffffff" : "#475569",
+                        borderRadius: "10px",
+                        padding: "1px 6px",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {t.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tabla Seleccionada */}
+          <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "10px" }}>
+            {activeDbTable === "socios" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>Nombre</th>
+                    <th style={{ padding: "10px" }}>Cédula</th>
+                    <th style={{ padding: "10px" }}>Wallet Address</th>
+                    <th style={{ padding: "10px" }}>Correo</th>
+                    <th style={{ padding: "10px" }}>Teléfono</th>
+                    <th style={{ padding: "10px" }}>Cargo</th>
+                    <th style={{ padding: "10px" }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.socios.map((s: any) => (
+                    <tr key={s.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px", fontWeight: 700 }}>{s.nombre}</td>
+                      <td style={{ padding: "10px" }}>{s.cedula}</td>
+                      <td style={{ padding: "10px", fontFamily: "monospace", color: "#2563eb" }}>{formatAddress(s.walletAddress)}</td>
+                      <td style={{ padding: "10px" }}>{s.correo}</td>
+                      <td style={{ padding: "10px" }}>{s.telefono}</td>
+                      <td style={{ padding: "10px", fontWeight: 700, color: s.directivo?.cargo ? "#7c3aed" : "#64748b" }}>
+                        {s.directivo?.cargo || "Socio"}
+                      </td>
+                      <td style={{ padding: "10px" }}>
+                        <span style={{ color: s.activo ? "#16a34a" : "#dc2626", fontWeight: 700 }}>
+                          {s.activo ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {activeDbTable === "directivos" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>Cargo</th>
+                    <th style={{ padding: "10px" }}>Socio Directivo</th>
+                    <th style={{ padding: "10px" }}>Cédula</th>
+                    <th style={{ padding: "10px" }}>Wallet</th>
+                    <th style={{ padding: "10px" }}>Fecha Inicio</th>
+                    <th style={{ padding: "10px" }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.directivos.map((d: any) => (
+                    <tr key={d.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px", fontWeight: 800, color: "#7c3aed" }}>{d.cargo}</td>
+                      <td style={{ padding: "10px", fontWeight: 700 }}>{d.socio?.nombre}</td>
+                      <td style={{ padding: "10px" }}>{d.socio?.cedula}</td>
+                      <td style={{ padding: "10px", fontFamily: "monospace", color: "#2563eb" }}>{formatAddress(d.socio?.walletAddress || "")}</td>
+                      <td style={{ padding: "10px" }}>{new Date(d.fechaInicio).toLocaleDateString()}</td>
+                      <td style={{ padding: "10px" }}>
+                        <span style={{ color: d.activo ? "#16a34a" : "#dc2626", fontWeight: 700 }}>
+                          {d.activo ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {activeDbTable === "propuestas" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>ID Chain</th>
+                    <th style={{ padding: "10px" }}>Nombre Propuesta</th>
+                    <th style={{ padding: "10px" }}>Monto</th>
+                    <th style={{ padding: "10px" }}>Tipo</th>
+                    <th style={{ padding: "10px" }}>Estado</th>
+                    <th style={{ padding: "10px" }}>Avales</th>
+                    <th style={{ padding: "10px" }}>Fecha Creación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.propuestas.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: "16px", textAlign: "center", color: "#64748b" }}>
+                        No hay propuestas registradas en PostgreSQL
+                      </td>
+                    </tr>
+                  ) : (
+                    data.dbTables.propuestas.map((p: any) => (
+                      <tr key={p.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px", fontWeight: 700 }}>#{p.propuestaChainId || "N/A"}</td>
+                        <td style={{ padding: "10px", fontWeight: 700 }}>{p.nombre}</td>
+                        <td style={{ padding: "10px", fontWeight: 800, color: "#16a34a" }}>{p.monto} ETH</td>
+                        <td style={{ padding: "10px" }}>{p.tipo}</td>
+                        <td style={{ padding: "10px" }}>
+                          <span style={{ background: "#eff6ff", color: "#1d4ed8", padding: "2px 8px", borderRadius: "6px", fontWeight: 700 }}>
+                            {p.estado}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px" }}>{p.avales?.filter((a: any) => a.firmado).length || 0} / {p.avales?.length || 0}</td>
+                        <td style={{ padding: "10px" }}>{new Date(p.fechaCreacion).toLocaleDateString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {activeDbTable === "votos" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>Socio Votante</th>
+                    <th style={{ padding: "10px" }}>Propuesta</th>
+                    <th style={{ padding: "10px" }}>Voto</th>
+                    <th style={{ padding: "10px" }}>Hash Secreto Audit</th>
+                    <th style={{ padding: "10px" }}>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.votos.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: "16px", textAlign: "center", color: "#64748b" }}>
+                        No hay votos emitidos en PostgreSQL
+                      </td>
+                    </tr>
+                  ) : (
+                    data.dbTables.votos.map((v: any) => (
+                      <tr key={v.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px", fontWeight: 700 }}>{v.socio?.nombre}</td>
+                        <td style={{ padding: "10px" }}>{v.propuesta?.nombre}</td>
+                        <td style={{ padding: "10px", fontWeight: 800 }}>{v.tipo}</td>
+                        <td style={{ padding: "10px", fontFamily: "monospace", color: "#64748b" }}>{formatAddress(v.hashSecreto)}</td>
+                        <td style={{ padding: "10px" }}>{new Date(v.fecha).toLocaleString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {activeDbTable === "avales" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>Directivo</th>
+                    <th style={{ padding: "10px" }}>Cargo</th>
+                    <th style={{ padding: "10px" }}>Propuesta</th>
+                    <th style={{ padding: "10px" }}>Firma Aval</th>
+                    <th style={{ padding: "10px" }}>Fecha Firma</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.avales.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: "16px", textAlign: "center", color: "#64748b" }}>
+                        No hay avales registrados en PostgreSQL
+                      </td>
+                    </tr>
+                  ) : (
+                    data.dbTables.avales.map((a: any) => (
+                      <tr key={a.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px", fontWeight: 700 }}>{a.directivo?.socio?.nombre}</td>
+                        <td style={{ padding: "10px", color: "#7c3aed", fontWeight: 700 }}>{a.directivo?.cargo}</td>
+                        <td style={{ padding: "10px" }}>{a.propuesta?.nombre}</td>
+                        <td style={{ padding: "10px" }}>
+                          <span style={{ color: a.firmado ? "#16a34a" : "#d97706", fontWeight: 700 }}>
+                            {a.firmado ? "✅ Firmado" : "⏳ Pendiente"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px" }}>{a.fechaFirma ? new Date(a.fechaFirma).toLocaleString() : "N/A"}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {activeDbTable === "actas" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>Propuesta</th>
+                    <th style={{ padding: "10px" }}>Hash Blockchain SHA-256</th>
+                    <th style={{ padding: "10px" }}>PDF Documento</th>
+                    <th style={{ padding: "10px" }}>Fecha Generación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.actas.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: "16px", textAlign: "center", color: "#64748b" }}>
+                        No hay actas registradas en PostgreSQL
+                      </td>
+                    </tr>
+                  ) : (
+                    data.dbTables.actas.map((acta: any) => (
+                      <tr key={acta.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "10px", fontWeight: 700 }}>{acta.propuesta?.nombre}</td>
+                        <td style={{ padding: "10px", fontFamily: "monospace", color: "#2563eb" }}>{formatAddress(acta.hashBlockchain || "")}</td>
+                        <td style={{ padding: "10px" }}>{acta.urlPdf ? "📄 PDF Disponible" : "Sin PDF"}</td>
+                        <td style={{ padding: "10px" }}>{new Date(acta.fechaGeneracion).toLocaleString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {activeDbTable === "configuraciones" && (
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
+                    <th style={{ padding: "10px" }}>Clave Parámetro</th>
+                    <th style={{ padding: "10px" }}>Valor Configurado</th>
+                    <th style={{ padding: "10px" }}>Descripción</th>
+                    <th style={{ padding: "10px" }}>Última Actualización</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.dbTables.configuraciones.map((cfg: any) => (
+                    <tr key={cfg.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <td style={{ padding: "10px", fontWeight: 800, color: "#0f172a" }}>{cfg.clave}</td>
+                      <td style={{ padding: "10px", fontWeight: 700, color: "#16a34a" }}>{cfg.valor}</td>
+                      <td style={{ padding: "10px", color: "#64748b" }}>{cfg.descripcion || "N/A"}</td>
+                      <td style={{ padding: "10px" }}>{new Date(cfg.updatedAt).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal para Registrar / Asignar Socio a Cuenta Anvil */}
       {assigningAccount && (

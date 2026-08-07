@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import UserProfileModal from "./UserProfileModal";
 
 export type TabType = "inicio" | "propuestas" | "actas" | "mi-balance" | "finanzas" | "socios" | "metrics" | "sistema";
@@ -27,6 +27,31 @@ export default function HeaderNav({
   onDisconnectWallet,
 }: HeaderNavProps) {
   const [showProfileCard, setShowProfileCard] = useState(false);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  // Consultar propuestas pendientes de firma (aval) si es directivo
+  useEffect(() => {
+    if (!wallet || !isDirectivo) {
+      setPendingCount(0);
+      return;
+    }
+
+    const checkPendingAvales = async () => {
+      try {
+        const res = await fetch(`/api/proposals?pendingAvalWallet=${wallet}`);
+        if (res.ok) {
+          const json = await res.json();
+          setPendingCount(json.pagination?.total || 0);
+        }
+      } catch (err) {
+        console.error("Error verificando avales pendientes:", err);
+      }
+    };
+
+    checkPendingAvales();
+    const interval = setInterval(checkPendingAvales, 15000);
+    return () => clearInterval(interval);
+  }, [wallet, isDirectivo]);
 
   return (
     <header className="header" style={{ position: "relative" }}>
@@ -51,8 +76,26 @@ export default function HeaderNav({
         <button
           className={`nav-tab ${activeTab === "propuestas" ? "active" : ""}`}
           onClick={() => setActiveTab("propuestas")}
+          style={{ position: "relative" }}
         >
-          📊 Propuestas
+          <span>📊 Propuestas</span>
+          {pendingCount > 0 && (
+            <span
+              style={{
+                marginLeft: "6px",
+                background: "#ef4444",
+                color: "#ffffff",
+                borderRadius: "10px",
+                padding: "2px 8px",
+                fontSize: "0.75rem",
+                fontWeight: 800,
+                boxShadow: "0 0 8px rgba(239, 68, 68, 0.6)",
+              }}
+              title={`${pendingCount} propuesta(s) requieren tu firma de aval`}
+            >
+              🔔 {pendingCount}
+            </span>
+          )}
         </button>
 
         <button

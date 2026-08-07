@@ -68,15 +68,15 @@ const TODOS_LOS_CARGOS = ["PRESIDENTE", "VICEPRESIDENTE", "SECRETARIO", "CONTRAL
 
 export async function GET() {
   try {
-    // Consultas concurrentes a la base de datos
-    const [socios, directivos] = await Promise.all([
-      prisma.socio.findMany({
-        include: { directivo: true },
-      }),
-      prisma.directivo.findMany({
-        where: { activo: true },
-        include: { socio: true },
-      }),
+    // Consultas concurrentes a la base de datos para setup y visor de tablas
+    const [socios, directivos, propuestas, votos, avales, actas, configuraciones] = await Promise.all([
+      prisma.socio.findMany({ include: { directivo: true }, orderBy: { createdAt: "asc" } }),
+      prisma.directivo.findMany({ include: { socio: true }, orderBy: { createdAt: "asc" } }),
+      prisma.propuesta.findMany({ include: { avales: true, votos: true }, orderBy: { createdAt: "desc" } }),
+      prisma.voto.findMany({ include: { socio: true, propuesta: true }, orderBy: { fecha: "desc" } }),
+      prisma.aval.findMany({ include: { directivo: { include: { socio: true } }, propuesta: true }, orderBy: { createdAt: "desc" } }),
+      prisma.acta.findMany({ include: { propuesta: true }, orderBy: { fechaGeneracion: "desc" } }),
+      prisma.configuracion.findMany({ orderBy: { clave: "asc" } }),
     ]);
 
     // Mapear el estado de cada cuenta de Anvil
@@ -100,8 +100,8 @@ export async function GET() {
       };
     });
 
-    // Calcular cargos ocupados y faltantes
-    const cargosOcupados = directivos.map((d) => d.cargo);
+    const directivosActivos = directivos.filter((d) => d.activo);
+    const cargosOcupados = directivosActivos.map((d) => d.cargo);
     const cargosFaltantes = TODOS_LOS_CARGOS.filter((c) => !cargosOcupados.includes(c as any));
     const setupCompletado = cargosFaltantes.length === 0;
 
@@ -130,10 +130,19 @@ export async function GET() {
       setupCompletado,
       cargosOcupados,
       cargosFaltantes,
-      totalDirectivosActivos: directivos.length,
+      totalDirectivosActivos: directivosActivos.length,
       totalSociosRegistrados: socios.length,
       accountsStatus,
       smartContracts,
+      dbTables: {
+        socios,
+        directivos,
+        propuestas,
+        votos,
+        avales,
+        actas,
+        configuraciones,
+      },
     });
   } catch (error: any) {
     console.error("Error en GET /api/sistema:", error);

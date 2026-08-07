@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const estado = searchParams.get("estado");
     const tipo = searchParams.get("tipo");
     const disponible = searchParams.get("disponible");
+    const pendingAvalWallet = searchParams.get("pendingAvalWallet");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
@@ -37,6 +38,19 @@ export async function GET(req: NextRequest) {
       where.tipo = tipo;
     }
     if (disponible !== null) where.disponible = disponible === "true";
+
+    if (pendingAvalWallet) {
+      where.avales = {
+        some: {
+          firmado: false,
+          directivo: {
+            socio: {
+              walletAddress: { equals: pendingAvalWallet, mode: "insensitive" },
+            },
+          },
+        },
+      };
+    }
 
     const [propuestas, total] = await Promise.all([
       prisma.propuesta.findMany({

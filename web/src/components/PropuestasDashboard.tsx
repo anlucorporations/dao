@@ -17,6 +17,16 @@ interface Propuesta {
   totalVotantes: number;
   fechaCreacion: string;
   ultimaModificacion: string;
+  avales?: {
+    id?: string;
+    firmado?: boolean;
+    directivoWallet?: string;
+    directivo?: {
+      socio?: {
+        walletAddress?: string;
+      };
+    };
+  }[];
 }
 
 const MOCK_PROPUESTAS: Propuesta[] = [];
@@ -115,8 +125,54 @@ export default function PropuestasDashboard({
     });
   }, [propuestasList, isDirectivo, filterEstatus]);
 
+  // Filtrar propuestas pendientes de firma del directivo actual
+  const propuestasPendientesFirma = propuestasList.filter(
+    (p) =>
+      isDirectivo &&
+      wallet &&
+      p.avales?.some((a) => {
+        const addr = a.directivoWallet || a.directivo?.socio?.walletAddress;
+        return !a.firmado && addr?.toLowerCase() === wallet.toLowerCase();
+      })
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* Banner de Notificación de Firma para Directivos */}
+      {isDirectivo && propuestasPendientesFirma.length > 0 && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+            border: "1px solid #fca5a5",
+            borderRadius: "14px",
+            padding: "16px 20px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            boxShadow: "0 4px 12px rgba(239, 68, 68, 0.1)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ fontSize: "1.6rem" }}>🔔</span>
+            <div>
+              <div style={{ fontWeight: 800, color: "#991b1b", fontSize: "0.95rem" }}>
+                Atención Directivo: Se requieren {propuestasPendientesFirma.length} firma(s) de aval pendiente(s)
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "#7f1d1d", marginTop: "2px" }}>
+                Como miembro activo de la Junta Directiva, tu firma es necesaria para habilitar la discusión y votación.
+              </div>
+            </div>
+          </div>
+          <button
+            className="button"
+            onClick={() => setFilterEstatus("borrador")}
+            style={{ background: "#dc2626", borderColor: "#b91c1c" }}
+          >
+            ✍️ Ver Propuestas por Firmar
+          </button>
+        </div>
+      )}
+
       {/* Header del Dashboard */}
       <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
         <div>
