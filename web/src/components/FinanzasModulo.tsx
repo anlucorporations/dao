@@ -1,12 +1,32 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { formatETH } from "@/lib/utils";
 
 export default function FinanzasModulo() {
-  const capitalTotalETH = 150.0;
-  const capitalReservadoETH = 30.0;
-  const capitalDisponibleETH = 120.0;
-  const totalDesembolsadoETH = 45.5;
+  const [capitalTotalETH, setCapitalTotalETH] = useState(0.0);
+  const [capitalReservadoETH, setCapitalReservadoETH] = useState(0.0);
+  const [capitalDisponibleETH, setCapitalDisponibleETH] = useState(0.0);
+  const [totalDesembolsadoETH, setTotalDesembolsadoETH] = useState(0.0);
+
+  useEffect(() => {
+    fetchBalanceData();
+  }, []);
+
+  async function fetchBalanceData() {
+    try {
+      const res = await fetch("/api/reports?type=balance");
+      const data = await res.json();
+      if (data && data.capitalTotalMatic != null) {
+        const total = parseFloat(data.capitalTotalMatic) || 0;
+        setCapitalTotalETH(total);
+        setCapitalReservadoETH(total * 0.2);
+        setCapitalDisponibleETH(total * 0.8);
+      }
+    } catch {
+      // Ignorar si la blockchain aún no está disponible
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
@@ -30,11 +50,11 @@ export default function FinanzasModulo() {
         <div className="stat-card">
           <span className="badge badge-mint">Capital Social Total</span>
           <div className="stat-value">{formatETH(capitalTotalETH)}</div>
-          <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>≈ $480,000 USD (Ref. $3,200/ETH)</p>
+          <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>Fondos depositados en la Tesorería</p>
         </div>
 
         <div className="stat-card">
-          <span className="badge badge-blue">Capital Disponible Liquido</span>
+          <span className="badge badge-blue">Capital Disponible Líquido</span>
           <div className="stat-value" style={{ color: "#2563eb" }}>{formatETH(capitalDisponibleETH)}</div>
           <p style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>Fondo listo para propuestas de inversión</p>
         </div>

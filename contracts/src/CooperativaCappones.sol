@@ -209,6 +209,15 @@ contract CooperativaCappones {
             delete directivos[_walletAntigua];
         }
 
+        // BUG-020 FIX: eliminar _walletAntigua de listaSocios usando swap-and-pop
+        for (uint256 i = 0; i < listaSocios.length; i++) {
+            if (listaSocios[i] == _walletAntigua) {
+                listaSocios[i] = listaSocios[listaSocios.length - 1];
+                listaSocios.pop();
+                break;
+            }
+        }
+
         emit WalletRecuperada(_walletAntigua, _walletNueva);
     }
 

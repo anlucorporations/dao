@@ -9,6 +9,7 @@ import FinanzasModulo from "@/components/FinanzasModulo";
 import SociosCrudModulo from "@/components/SociosCrudModulo";
 import MiBalanceModulo from "@/components/MiBalanceModulo";
 import MetricsModulo from "@/components/MetricsModulo";
+import SistemaModulo from "@/components/SistemaModulo";
 
 const DIRECTIVOS_WALLETS = [
   "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", // Presidente (Cuenta #0 Anvil)
@@ -43,10 +44,10 @@ export default function HomePage() {
 
   function getRoleForWallet(addr: string): string {
     const lower = addr.toLowerCase();
-    if (lower === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") return "Presidente (Ana Lucía Morales)";
+    if (lower === "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266") return "Contralor / Owner (Ana Lucía Morales)";
     if (lower === "0x70997970c51812dc3a010c7d01b50e0d17dc79c8") return "Vicepresidente (Carlos Mendoza)";
-    if (lower === "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc") return "Secretaria (Elena Rivas)";
-    if (lower === "0x90f79bf6eb2c4f6703055175b43657a0501a3341") return "Contralor (Roberto Fernández)";
+    if (lower === "0x3c44cdddb6a900fa2b585dd299e03d12FA4293BC".toLowerCase()) return "Secretaria (Elena Rivas)";
+    if (lower === "0x90f79bf6eb2c4f870365e785982e1f101e93b906".toLowerCase()) return "Presidente (Roberto Fernández)";
     if (lower === "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65") return "Contadora (Patricia Silva)";
     if (DIRECTIVOS_WALLETS.includes(lower)) return "Junta Directiva";
     return "Socio Cooperativista";
@@ -167,6 +168,8 @@ export default function HomePage() {
         {activeTab === "socios" && <SociosCrudModulo />}
 
         {activeTab === "metrics" && <MetricsModulo />}
+
+        {activeTab === "sistema" && <SistemaModulo />}
       </main>
     </div>
   );

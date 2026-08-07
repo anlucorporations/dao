@@ -65,8 +65,16 @@ export function getProvider() {
 
 // Provider con signer para transacciones (backend)
 export function getAdminSigner() {
+  // BUG-018 FIX: validar que la clave privada esté configurada con mensaje claro
+  const adminKey = process.env.ADMIN_PRIVATE_KEY;
+  if (!adminKey) {
+    throw new Error(
+      "ADMIN_PRIVATE_KEY no está configurada en las variables de entorno. " +
+      "Agrega esta variable en docker-compose.yml o en .env.local"
+    );
+  }
   const provider = getProvider();
-  return new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY!, provider);
+  return new ethers.Wallet(adminKey, provider);
 }
 
 // Instancias de contratos (lectura)

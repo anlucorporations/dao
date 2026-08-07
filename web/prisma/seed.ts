@@ -177,35 +177,32 @@ async function fetchLiveAnvilAccounts(): Promise<string[]> {
 }
 
 function exportAnvilAccountsMd(accounts: typeof DEFAULT_ANVIL_ACCOUNTS) {
-  const mdContent = `# 🔑 Cuentas Nativas de Anvil Desplegadas y Registradas en PostgreSQL
+  const ownerAcc = accounts[0];
+  const availableAccs = accounts.slice(1);
 
-Este documento registra oficialmente las **10 Cuentas Nativas del servicio Anvil (Chain ID 31337)** capturadas dinámicamente desde el servicio RPC e introducidas en la base de datos PostgreSQL de la Cooperativa Los Cappones.
+  const mdContent = `# 🔑 Cuentas Nativas de Anvil y Estado de Despliegue
 
----
-
-## 🏛️ Junta Directiva (Cuentas 0 a 4)
-
-| # | Cargo / Rol | Nombre Registrado | Dirección Wallet (Anvil Address) | Clave Privada (Private Key) | Saldo Inicial |
-|---|---|---|---|---|---|
-${accounts
-  .slice(0, 5)
-  .map(
-    (a) =>
-      `| **${a.index}** | **${a.cargo}** | ${a.nombre} | \`${a.walletAddress}\` | \`${a.privateKey}\` | \`10,000.00 ETH\` |`
-  )
-  .join("\n")}
+Este documento registra oficialmente las **10 Cuentas Nativas del servicio Anvil (Chain ID 31337)**.
+En la inicialización del sistema, **únicamente la Cuenta #0** es registrada como **Owner de Despliegue y Contralor** de la Cooperativa. Las cuentas 1 a 9 están disponibles para la asignación manual por la Junta Directiva durante el Setup.
 
 ---
 
-## 👤 Socios Cooperativistas (Cuentas 5 a 9)
+## 🏛️ Cuenta Owner / Deployer (Cuenta #0)
 
-| # | Cargo / Rol | Nombre Registrado | Dirección Wallet (Anvil Address) | Clave Privada (Private Key) | Saldo Inicial |
+| # | Rol en Sistema | Nombre | Dirección Wallet (Anvil) | Clave Privada (Private Key) | Estado DB |
 |---|---|---|---|---|---|
-${accounts
-  .slice(5, 10)
+| **0** | **Owner / Contralor** | Ana Lucía Morales | \`${ownerAcc.walletAddress}\` | \`${ownerAcc.privateKey}\` | \`ASIGNADO (CONTRALOR)\` |
+
+---
+
+## 👤 Cuentas Anvil Disponibles para Asignación (Cuentas 1 a 9)
+
+| # | Dirección Wallet (Anvil) | Clave Privada (Private Key) | Saldo Inicial | Estado |
+|---|---|---|---|---|
+${availableAccs
   .map(
     (a) =>
-      `| **${a.index}** | **Socio** | ${a.nombre} | \`${a.walletAddress}\` | \`${a.privateKey}\` | \`10,000.00 ETH\` |`
+      `| **${a.index}** | \`${a.walletAddress}\` | \`${a.privateKey}\` | \`10,000.00 ETH\` | \`DISPONIBLE PARA SETUP\` |`
   )
   .join("\n")}
 
@@ -263,46 +260,44 @@ async function main() {
   await prisma.directivo.deleteMany({});
   await prisma.socio.deleteMany({});
 
-  // 3. Insertar las 10 cuentas de Anvil como Socios (y Directivos si poseen cargo)
-  for (const acc of finalAccounts) {
-    const socio = await prisma.socio.create({
-      data: {
-        nombre: acc.nombre,
-        cedula: acc.cedula,
-        correo: acc.correo,
-        walletAddress: acc.walletAddress,
-        telefono: acc.telefono,
-        direccion: acc.direccion,
-        sexo: acc.sexo,
-        fechaNacimiento: acc.fechaNacimiento,
-        estadoCivil: acc.estadoCivil,
-        activo: true,
-      },
-    });
+  // 3. Insertar ÚNICAMENTE la Cuenta #0 de Anvil como Socio y Contralor (Owner de Despliegue)
+  const ownerAcc = finalAccounts[0];
+  const socioOwner = await prisma.socio.create({
+    data: {
+      nombre: "Ana Lucía Morales (Owner Contralor)",
+      cedula: "V-12533620",
+      correo: "contralor.owner@loscappones.coop",
+      walletAddress: ownerAcc.walletAddress,
+      telefono: "+584120101010",
+      direccion: "Av. Principal Los Cappones, Edif. Presidencia, Piso 3",
+      sexo: "F",
+      fechaNacimiento: new Date("1982-05-14"),
+      estadoCivil: "Casado",
+      activo: true,
+    },
+  });
 
-    if (acc.cargo) {
-      await prisma.directivo.create({
-        data: {
-          socioId: socio.id,
-          cargo: acc.cargo,
-          fechaInicio: fechaInicio,
-          fechaFin: fechaFin,
-          activo: true,
-        },
-      });
-      console.log(`✅ Directivo Registrado [${acc.index}]: ${acc.nombre} (${acc.cargo}) - ${acc.walletAddress}`);
-    } else {
-      console.log(`👤 Socio Registrado [${acc.index}]: ${acc.nombre} - ${acc.walletAddress}`);
-    }
-  }
+  await prisma.directivo.create({
+    data: {
+      socioId: socioOwner.id,
+      cargo: Cargo.CONTRALOR,
+      fechaInicio: fechaInicio,
+      fechaFin: fechaFin,
+      activo: true,
+    },
+  });
 
-  // 3. Limpiar propuestas y actas
-  await prisma.acta.deleteMany({});
-  await prisma.voto.deleteMany({});
-  await prisma.aval.deleteMany({});
-  await prisma.propuesta.deleteMany({});
+  console.log(`✅ Owner / Contralor Inicializado [Cuenta #0]: ${socioOwner.nombre} (${ownerAcc.walletAddress})`);
+  console.log(`ℹ️ Cuentas #1 a #9 listas en Anvil para asignación manual durante el Setup por la Junta Directiva.`);
 
-  console.log("Seed completado exitosamente: Cuentas de Anvil sincronizadas dinámicamente con PostgreSQL.");
+  // 4. Configurar estado inicial del Setup
+  await prisma.configuracion.upsert({
+    where: { clave: "SETUP_COMPLETADO" },
+    update: { valor: "false", descripcion: "Indica si la Junta Directiva ha sido completada (5 cargos)" },
+    create: { clave: "SETUP_COMPLETADO", valor: "false", descripcion: "Indica si la Junta Directiva ha sido completada (5 cargos)" },
+  });
+
+  console.log("Seed completado exitosamente: Solo Cuenta #0 inicializada en PostgreSQL como Contralor.");
 }
 
 main()

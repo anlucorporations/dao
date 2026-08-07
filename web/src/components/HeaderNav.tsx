@@ -3,7 +3,7 @@
 import { useState } from "react";
 import UserProfileModal from "./UserProfileModal";
 
-export type TabType = "inicio" | "propuestas" | "actas" | "mi-balance" | "finanzas" | "socios" | "metrics";
+export type TabType = "inicio" | "propuestas" | "actas" | "mi-balance" | "finanzas" | "socios" | "metrics" | "sistema";
 
 interface HeaderNavProps {
   activeTab: TabType;
@@ -67,6 +67,13 @@ export default function HeaderNav({
           onClick={() => setActiveTab("metrics")}
         >
           📈 Métricas
+        </button>
+
+        <button
+          className={`nav-tab ${activeTab === "sistema" ? "active" : ""}`}
+          onClick={() => setActiveTab("sistema")}
+        >
+          ⚙️ Sistema
         </button>
 
         {/* Tab exclusivo para Socios Conectados */}

@@ -30,3 +30,8 @@ artifacts/
 KeLuDa.2324*
 web/tsconfig.tsbuildinfo
 
+# Tarballs y binarios locales
+*.tar.gz
+*.tar.xz
+web/node-v20.18.0-linux-x64/
+node_bin/

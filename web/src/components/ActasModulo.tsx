@@ -12,32 +12,7 @@ interface ActaRecord {
   firmadoPor: string;
 }
 
-const ACTAS_REGISTRADAS: ActaRecord[] = [
-  {
-    id: 1,
-    codigo: "ACTA-2026-001",
-    titulo: "Acta de Constitución y Elección de Junta Directiva 2026-2028",
-    fecha: "2026-01-15",
-    hashSHA256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    firmadoPor: "Presidente anlu (V-12533620)",
-  },
-  {
-    id: 2,
-    codigo: "ACTA-2026-002",
-    titulo: "Aprobación de Fondo de Reserva e Inversión Tecnológica",
-    fecha: "2026-04-10",
-    hashSHA256: "0x123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
-    firmadoPor: "Asamblea General de Socios",
-  },
-  {
-    id: 3,
-    codigo: "ACTA-2026-003",
-    titulo: "Aprobación de la Propuesta de Adquisición de Servidores",
-    fecha: "2026-07-22",
-    hashSHA256: "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
-    firmadoPor: "Junta Directiva Institucional",
-  },
-];
+const ACTAS_REGISTRADAS: ActaRecord[] = [];
 
 export default function ActasModulo() {
   const [fileToVerify, setFileToVerify] = useState<File | null>(null);
@@ -198,38 +173,44 @@ Documento verificado e inmutable.`;
         </h2>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {ACTAS_REGISTRADAS.map((acta) => (
-            <div
-              key={acta.id}
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "14px",
-                padding: "18px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "14px",
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                  <span className="badge badge-blue">{acta.codigo}</span>
-                  <span style={{ fontSize: "0.8rem", color: "#64748b" }}>Fecha: {acta.fecha}</span>
-                </div>
-                <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>{acta.titulo}</h3>
-                <div style={{ fontSize: "0.75rem", color: "#64748b", fontFamily: "monospace", marginTop: "4px" }}>
-                  SHA-256: {acta.hashSHA256}
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button className="button-outline" style={{ padding: "8px 14px", fontSize: "0.8rem" }} onClick={() => downloadActa(acta)}>
-                  Descargar Acta
-                </button>
-              </div>
+          {ACTAS_REGISTRADAS.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+              📜 No hay actas institucionales registradas por el momento.
             </div>
-          ))}
+          ) : (
+            ACTAS_REGISTRADAS.map((acta) => (
+              <div
+                key={acta.id}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "14px",
+                  padding: "18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "14px",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span className="badge badge-blue">{acta.codigo}</span>
+                    <span style={{ fontSize: "0.8rem", color: "#64748b" }}>Fecha: {acta.fecha}</span>
+                  </div>
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>{acta.titulo}</h3>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", fontFamily: "monospace", marginTop: "4px" }}>
+                    SHA-256: {acta.hashSHA256}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button className="button-outline" style={{ padding: "8px 14px", fontSize: "0.8rem" }} onClick={() => downloadActa(acta)}>
+                    Descargar Acta
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

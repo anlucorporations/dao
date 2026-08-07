@@ -103,7 +103,38 @@ async function generarReportePropuestas() {
  */
 export async function POST(req: NextRequest) {
   try {
-    const { propuestaId } = await req.json();
+    const { propuestaId, walletEjecutor, firma } = await req.json();
+
+    // BUG-014 FIX: verificar identidad del solicitante antes de generar acta
+    if (!walletEjecutor || !firma) {
+      return NextResponse.json(
+        { error: "Se requiere walletEjecutor y firma para generar actas" },
+        { status: 401 }
+      );
+    }
+
+    // Verificar firma criptografica
+    const { ethers: ethersLib } = await import("ethers");
+    const mensajeEsperado = `Generar acta propuesta ${propuestaId}`;
+    const recoveredAddress = ethersLib.verifyMessage(mensajeEsperado, firma);
+    if (recoveredAddress.toLowerCase() !== walletEjecutor.toLowerCase()) {
+      return NextResponse.json({ error: "Firma invalida" }, { status: 401 });
+    }
+
+    // Verificar que es directivo activo
+    const directivo = await prisma.directivo.findFirst({
+      where: {
+        socio: { walletAddress: walletEjecutor.toLowerCase() },
+        activo: true,
+      },
+    });
+    if (!directivo) {
+      return NextResponse.json({ error: "Solo directivos pueden generar actas" }, { status: 403 });
+    }
+
+    if (!propuestaId) {
+      return NextResponse.json({ error: "propuestaId requerido" }, { status: 400 });
+    }
 
     const propuesta = await prisma.propuesta.findUnique({
       where: { id: propuestaId },

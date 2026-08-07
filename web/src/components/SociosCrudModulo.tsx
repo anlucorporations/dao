@@ -103,7 +103,7 @@ export default function SociosCrudModulo() {
         <div>
           <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a" }}>👥 Módulo de Gestión de Socios (CRUD)</h1>
           <p style={{ fontSize: "0.9rem", color: "#64748b" }}>
-            Administración del padrón societario inicializado con las 10 Cuentas de Anvil
+            Administración del padrón societario inicializado con la Cuenta Owner y Cuentas de Anvil
           </p>
         </div>
       </div>

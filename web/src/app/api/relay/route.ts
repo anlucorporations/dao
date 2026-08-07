@@ -60,24 +60,36 @@ export async function POST(req: NextRequest) {
     );
 
     const tx = await forwarderWrite.execute(request, signature, {
-      gasLimit: 200000,
+      gasLimit: 500000, // BUG-017 FIX: aumentado para cubrir operaciones complejas como crearPropuesta
     });
 
     const receipt = await tx.wait();
 
-    // 5. Guardar voto en base de datos (hash secreto)
+    // BUG-003 FIX: verificar que la TX no fue revertida antes de guardar en BD
+    if (!receipt || receipt.status === 0) {
+      throw new Error("Transaccion revertida en blockchain — voto no registrado");
+    }
+
+    // BUG-004 FIX: validar tipos antes de calcular el hash
+    const propuestaId = request.propuestaId != null ? BigInt(request.propuestaId) : null;
+    const tipoVoto = request.voto != null ? Number(request.voto) : null;
+
+    if (propuestaId === null || tipoVoto === null || ![0, 1, 2].includes(tipoVoto)) {
+      throw new Error("Datos de voto invalidos: propuestaId o voto no definidos correctamente");
+    }
+
     const hashSecreto = ethers.keccak256(
       ethers.solidityPacked(
         ["address", "uint256", "uint8"],
-        [walletAddress, request.propuestaId, request.voto]
+        [walletAddress, propuestaId, tipoVoto]
       )
     );
 
     await prisma.voto.create({
       data: {
-        propuestaId: request.propuestaId,
+        propuestaId: String(propuestaId),
         socioId: socio.id,
-        tipo: request.voto === 0 ? "ACEPTADA" : request.voto === 1 ? "RECHAZADA" : "ABSTENCION",
+        tipo: tipoVoto === 0 ? "ACEPTADA" : tipoVoto === 1 ? "RECHAZADA" : "ABSTENCION",
         hashSecreto,
         txHash: receipt.hash,
       },
@@ -123,8 +135,13 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const provider = new ethers.JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL);
-    const adminWallet = new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY!, provider);
+    // BUG-009 FIX: usar NEXT_PUBLIC_ANVIL_RPC (nombre correcto en docker-compose.yml)
+    const rpcUrl = process.env.NEXT_PUBLIC_ANVIL_RPC || process.env.RPC_URL || "http://anvil:8545";
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    if (!process.env.ADMIN_PRIVATE_KEY) {
+      throw new Error("ADMIN_PRIVATE_KEY no configurada");
+    }
+    const adminWallet = new ethers.Wallet(process.env.ADMIN_PRIVATE_KEY, provider);
 
     const balance = await provider.getBalance(adminWallet.address);
     const balanceMatic = ethers.formatEther(balance);

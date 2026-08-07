@@ -18,9 +18,24 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    const where: any = {};
-    if (estado) where.estado = estado;
-    if (tipo) where.tipo = tipo;
+    const where: Record<string, unknown> = {};
+
+    // BUG-024 FIX: validar que los filtros sean valores del enum
+    const estadosValidos = ["BORRADOR", "POR_DISCUTIR", "APROBADA", "RECHAZADA", "APELADA", "EJECUTADA"];
+    const tiposValidos = ["INVERSION", "ADMINISTRATIVA"];
+
+    if (estado) {
+      if (!estadosValidos.includes(estado)) {
+        return NextResponse.json({ error: `Estado invalido. Validos: ${estadosValidos.join(", ")}` }, { status: 400 });
+      }
+      where.estado = estado;
+    }
+    if (tipo) {
+      if (!tiposValidos.includes(tipo)) {
+        return NextResponse.json({ error: `Tipo invalido. Validos: ${tiposValidos.join(", ")}` }, { status: 400 });
+      }
+      where.tipo = tipo;
+    }
     if (disponible !== null) where.disponible = disponible === "true";
 
     const [propuestas, total] = await Promise.all([
@@ -56,6 +71,26 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { nombre, descripcion, monto, walletReceptora, tipo, walletCreador, token2FA } = body;
+
+    // BUG-012+013 FIX: validar todos los campos requeridos antes de proceder
+    if (!walletCreador || !nombre || !descripcion || !tipo || monto == null) {
+      return NextResponse.json(
+        { error: "Campos requeridos: nombre, descripcion, monto, tipo, walletCreador" },
+        { status: 400 }
+      );
+    }
+    if (isNaN(Number(monto)) || Number(monto) <= 0) {
+      return NextResponse.json(
+        { error: "monto debe ser un numero positivo" },
+        { status: 400 }
+      );
+    }
+    if (walletReceptora && !walletReceptora.startsWith("0x")) {
+      return NextResponse.json(
+        { error: "walletReceptora no es una direccion Ethereum valida" },
+        { status: 400 }
+      );
+    }
 
     // Verificar 2FA del creador
     const directivo = await prisma.directivo.findFirst({
@@ -252,7 +287,7 @@ async function firmarAval(body: any, req: NextRequest) {
 }
 
 async function cambiarDisponibilidad(body: any, req: NextRequest) {
-  const { propuestaId, disponible, walletDirectivo } = body;
+  const { propuestaId, disponible, walletDirectivo, token2FA } = body;
 
   const directivo = await prisma.directivo.findFirst({
     where: {
@@ -263,6 +298,18 @@ async function cambiarDisponibilidad(body: any, req: NextRequest) {
 
   if (!directivo) {
     return NextResponse.json({ error: "No es directivo" }, { status: 403 });
+  }
+
+  // BUG-010 FIX: verificar 2FA tambien en cambiarDisponibilidad
+  const verificado = speakeasy.totp.verify({
+    secret: directivo.secret2FA || "",
+    encoding: "base32",
+    token: token2FA || "",
+    window: 2,
+  });
+
+  if (!verificado) {
+    return NextResponse.json({ error: "2FA invalido" }, { status: 401 });
   }
 
   await prisma.propuesta.update({

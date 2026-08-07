@@ -48,7 +48,8 @@ contract ActaHashRegistry is Ownable {
         }
 
         // Buscar la propuesta asociada
-        for (uint256 i = 0; i <= totalActas; i++) {
+        // BUG-022 FIX: usar < totalActas (no <=) para no acceder a indice inexistente en el mapping
+        for (uint256 i = 0; i < totalActas; i++) {
             if (actas[i].hash == _hash) {
                 return (true, actas[i].propuestaId);
             }

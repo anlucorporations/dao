@@ -74,6 +74,11 @@ contract VotacionPropuestas is ERC2771Context {
     mapping(uint256 => mapping(address => Aval)) public avales;
     mapping(uint256 => uint256) public conteoAvales;
 
+    // BUG-021 FIX: mantener lista de directivos activos directamente en este contrato
+    // evita el loop O(n) sobre todos los socios en crearPropuesta
+    address[] internal _directivosActivos;
+    mapping(address => bool) internal _esDirectivoActivo;
+
     // ============ EVENTS ============
     event PropuestaCreada(uint256 indexed id, address creador, string nombre);
     event AvalFirmado(uint256 indexed id, address directivo);
@@ -110,6 +115,32 @@ contract VotacionPropuestas is ERC2771Context {
         actaRegistry = ActaHashRegistry(_actaRegistry);
     }
 
+    // ============ ADMINISTRACIÓN DE DIRECTIVOS (BUG-021) ============
+    // Estas funciones deben llamarse cada vez que se asigna o remueve un directivo
+    // en CooperativaCappones para mantener el array interno sincronizado.
+    function registrarDirectivoActivo(address _directivo) external {
+        require(msg.sender == cooperativa.owner(), "Solo el owner de la cooperativa");
+        require(!_esDirectivoActivo[_directivo], "Ya esta registrado");
+        _directivosActivos.push(_directivo);
+        _esDirectivoActivo[_directivo] = true;
+    }
+
+    function eliminarDirectivoActivo(address _directivo) external {
+        require(msg.sender == cooperativa.owner(), "Solo el owner de la cooperativa");
+        require(_esDirectivoActivo[_directivo], "No esta registrado");
+        _esDirectivoActivo[_directivo] = false;
+        for (uint256 i = 0; i < _directivosActivos.length; i++) {
+            if (_directivosActivos[i] == _directivo) {
+                _directivosActivos[i] = _directivosActivos[_directivosActivos.length - 1];
+                _directivosActivos.pop();
+                break;
+            }
+        }
+    }
+
+    function getDirectivosActivos() external view returns (address[] memory) {
+        return _directivosActivos;
+    }
 
     // ============ CREACIÓN DE PROPUESTAS ============
     function crearPropuesta(
@@ -156,11 +187,11 @@ contract VotacionPropuestas is ERC2771Context {
             creador: _msgSender()
         }));
 
-        // Inicializar avales para los 5 directivos
-        address[] memory socios = cooperativa.getListaSocios();
-        for (uint i = 0; i < socios.length; i++) {
-            if (cooperativa.getDirectivo(socios[i]).activo) {
-                avales[id][socios[i]] = Aval(socios[i], false, 0);
+        // BUG-021 FIX: inicializar avales usando el array interno en lugar de iterar todos los socios
+        for (uint i = 0; i < _directivosActivos.length; i++) {
+            address dir = _directivosActivos[i];
+            if (_esDirectivoActivo[dir]) {
+                avales[id][dir] = Aval(dir, false, 0);
             }
         }
 
@@ -276,6 +307,8 @@ contract VotacionPropuestas is ERC2771Context {
             (bool success, ) = p.walletReceptora.call{value: p.monto}("");
             require(success, "Transferencia fallida");
         } else {
+            // BUG-008 FIX: pagarPropuestaInversion ya tiene require(success) interno
+            // si lanza revert, se propaga hacia arriba correctamente
             cooperativa.pagarPropuestaInversion(payable(p.walletReceptora), p.monto);
         }
 

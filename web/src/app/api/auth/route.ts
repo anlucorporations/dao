@@ -11,12 +11,22 @@ import { ethers } from "ethers";
  */
 export async function POST(req: NextRequest) {
   try {
-    const { walletAddress, signature, message } = await req.json();
+    const { walletAddress, signature, message, token2FA } = await req.json();
 
     if (!walletAddress || !signature) {
       return NextResponse.json(
         { error: "Wallet y firma requeridas" },
         { status: 400 }
+      );
+    }
+
+    // BUG-002 FIX: verificar firma ANTES de consultar blockchain
+    const mensajeFirma = message || "Autenticacion DAO Los Cappones";
+    const recoveredAddress = ethers.verifyMessage(mensajeFirma, signature);
+    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      return NextResponse.json(
+        { error: "Firma de wallet invalida" },
+        { status: 401 }
       );
     }
 
@@ -28,16 +38,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "No es socio activo de la cooperativa" },
         { status: 403 }
-      );
-    }
-
-    // Verificar firma criptográfica del mensaje de autenticación
-    const mensajeFirma = message || "Autenticacion DAO Los Cappones";
-    const recoveredAddress = ethers.verifyMessage(mensajeFirma, signature);
-    if (recoveredAddress.toLowerCase() !== walletAddress.toLowerCase()) {
-      return NextResponse.json(
-        { error: "Firma de wallet invalida" },
-        { status: 401 }
       );
     }
 
@@ -56,9 +56,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Si es directivo, verificar 2FA
+    // BUG-001 FIX: token2FA ya fue leído en la desestructuración inicial (req.json() solo se puede llamar una vez)
     if (socio.directivo?.activo) {
-      const { token2FA } = await req.json();
-
       if (!token2FA) {
         return NextResponse.json(
           { error: "2FA requerido para directivos", requiere2FA: true },

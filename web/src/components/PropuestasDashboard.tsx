@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatAddress, formatETH } from "@/lib/utils";
 
 interface Propuesta {
@@ -37,6 +37,37 @@ export default function PropuestasDashboard({
   const [propuestasList, setPropuestasList] = useState<Propuesta[]>(MOCK_PROPUESTAS);
   const [filterEstatus, setFilterEstatus] = useState<string>("todas");
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  useEffect(() => {
+    fetchPropuestas();
+  }, []);
+
+  async function fetchPropuestas() {
+    try {
+      const res = await fetch("/api/proposals");
+      const json = await res.json();
+      if (json && Array.isArray(json.propuestas) && json.propuestas.length > 0) {
+        const formatted: Propuesta[] = json.propuestas.map((p: any) => ({
+          id: p.id,
+          titulo: p.nombre,
+          descripcion: p.descripcion,
+          montoETH: parseFloat(p.monto) || 0,
+          destinatario: p.walletReceptora,
+          estatus: p.estado === "BORRADOR" ? "Borrador" : p.estado === "POR_DISCUTIR" ? "En Votacion" : p.estado === "APROBADA" || p.estado === "EJECUTADA" ? "Aprobada y Ejecutada" : "Rechazada",
+          publicada: p.estado !== "BORRADOR",
+          votosFavor: p.votos ? p.votos.filter((v: any) => v.tipo === "ACEPTADA").length : 0,
+          votosContra: p.votos ? p.votos.filter((v: any) => v.tipo === "RECHAZADA").length : 0,
+          votosAbstencion: p.votos ? p.votos.filter((v: any) => v.tipo === "ABSTENCION").length : 0,
+          totalVotantes: p.votos ? p.votos.length : 0,
+          fechaCreacion: p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "",
+          ultimaModificacion: p.updatedAt ? new Date(p.updatedAt).toISOString().split("T")[0] : "",
+        }));
+        setPropuestasList(formatted);
+      }
+    } catch {
+      // Si la API falla o no hay datos, mantener vacías las propuestas
+    }
+  }
 
   // Campos del formulario flotante
   const [nuevoTitulo, setNuevoTitulo] = useState("");

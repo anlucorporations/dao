@@ -11,24 +11,7 @@ interface VotoEmitido {
   resultadoPropuesta: "Aprobada y Ejecutada" | "En Votacion" | "Rechazada";
 }
 
-const MOCK_VOTOS_SOCIO: VotoEmitido[] = [
-  {
-    id: 1,
-    propuestaId: 1,
-    tituloPropuesta: "Adquisición de Servidores de Alta Disponibilidad para Nodo Validator",
-    miVoto: "A Favor",
-    fechaVoto: "2026-07-21",
-    resultadoPropuesta: "Aprobada y Ejecutada",
-  },
-  {
-    id: 2,
-    propuestaId: 2,
-    tituloPropuesta: "Fondo de Liquidez para Proyectos Agrícolas Comunitarios",
-    miVoto: "A Favor",
-    fechaVoto: "2026-08-02",
-    resultadoPropuesta: "En Votacion",
-  },
-];
+const MOCK_VOTOS_SOCIO: VotoEmitido[] = [];
 
 interface MiBalanceModuloProps {
   wallet: string | null;
@@ -36,8 +19,8 @@ interface MiBalanceModuloProps {
 }
 
 export default function MiBalanceModulo({ wallet, userRole }: MiBalanceModuloProps) {
-  const miBalanceETH = 12.5;
-  const miPorcentajeCapital = 15.4;
+  const miBalanceETH = 0.0;
+  const miPorcentajeCapital = 0.0;
 
   if (!wallet) {
     return (
@@ -93,45 +76,51 @@ export default function MiBalanceModulo({ wallet, userRole }: MiBalanceModuloPro
         </h2>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {MOCK_VOTOS_SOCIO.map((voto) => (
-            <div
-              key={voto.id}
-              style={{
-                background: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "14px",
-                padding: "18px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "14px",
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#64748b" }}>Propuesta #{voto.propuestaId}</span>
-                  <span
-                    className={`badge ${
-                      voto.miVoto === "A Favor"
-                        ? "badge-mint"
-                        : voto.miVoto === "En Contra"
-                        ? "badge-rose"
-                        : "badge-amber"
-                    }`}
-                  >
-                    Mi Voto: {voto.miVoto}
-                  </span>
-                </div>
-                <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>{voto.tituloPropuesta}</h3>
-                <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>Emitido el: {voto.fechaVoto}</div>
-              </div>
-
-              <div>
-                <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600, display: "block" }}>Resultado Actual</span>
-                <span className="badge badge-blue">{voto.resultadoPropuesta}</span>
-              </div>
+          {MOCK_VOTOS_SOCIO.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px", color: "#64748b", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
+              🗳️ No has emitido votos en ninguna propuesta aún.
             </div>
-          ))}
+          ) : (
+            MOCK_VOTOS_SOCIO.map((voto) => (
+              <div
+                key={voto.id}
+                style={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "14px",
+                  padding: "18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: "14px",
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#64748b" }}>Propuesta #{voto.propuestaId}</span>
+                    <span
+                      className={`badge ${
+                        voto.miVoto === "A Favor"
+                          ? "badge-mint"
+                          : voto.miVoto === "En Contra"
+                          ? "badge-rose"
+                          : "badge-amber"
+                      }`}
+                    >
+                      Mi Voto: {voto.miVoto}
+                    </span>
+                  </div>
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>{voto.tituloPropuesta}</h3>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "4px" }}>Emitido el: {voto.fechaVoto}</div>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600, display: "block" }}>Resultado Actual</span>
+                  <span className="badge badge-blue">{voto.resultadoPropuesta}</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
