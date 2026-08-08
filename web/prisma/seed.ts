@@ -1,0 +1,310 @@
+import { PrismaClient, Cargo } from "@prisma/client";
+import * as fs from "fs";
+import * as path from "path";
+
+const prisma = new PrismaClient();
+
+// Mapeo base de cuentas Anvil (Chain ID 31337)
+const DEFAULT_ANVIL_ACCOUNTS = [
+  {
+    index: 0,
+    walletAddress: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    privateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    nombre: "Ana Lucía Morales",
+    cedula: "V-12533620",
+    correo: "presidente@loscappones.coop",
+    telefono: "+584120101010",
+    direccion: "Av. Principal Los Cappones, Edif. Presidencia, Piso 3",
+    sexo: "F",
+    fechaNacimiento: new Date("1982-05-14"),
+    estadoCivil: "Casado",
+    cargo: Cargo.PRESIDENTE,
+  },
+  {
+    index: 1,
+    walletAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    privateKey: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+    nombre: "Carlos Eduardo Mendoza",
+    cedula: "V-14890123",
+    correo: "vicepresidente@loscappones.coop",
+    telefono: "+584140202020",
+    direccion: "Urb. El Bosque, Calle 4, Quinta San Carlos",
+    sexo: "M",
+    fechaNacimiento: new Date("1985-09-22"),
+    estadoCivil: "Casado",
+    cargo: Cargo.VICEPRESIDENTE,
+  },
+  {
+    index: 2,
+    walletAddress: "0x3C44CdDDB6a900fa2b585dd299e03d12FA4293BC",
+    privateKey: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
+    nombre: "Elena Beatriz Rivas",
+    cedula: "V-16789456",
+    correo: "secretaria@loscappones.coop",
+    telefono: "+584160303030",
+    direccion: "Residencias La Floresta, Torre B, Apto 4-A",
+    sexo: "F",
+    fechaNacimiento: new Date("1988-11-03"),
+    estadoCivil: "Soltero",
+    cargo: Cargo.SECRETARIO,
+  },
+  {
+    index: 3,
+    walletAddress: "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    privateKey: "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
+    nombre: "Roberto José Fernández",
+    cedula: "V-18234567",
+    correo: "contralor@loscappones.coop",
+    telefono: "+584120404040",
+    direccion: "Sector Los Naranjos, Calle Las Flores #12",
+    sexo: "M",
+    fechaNacimiento: new Date("1990-03-18"),
+    estadoCivil: "Divorciado",
+    cargo: Cargo.CONTRALOR,
+  },
+  {
+    index: 4,
+    walletAddress: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+    privateKey: "0x47e179ec197488593b12f4931093882087f4181f3d46736757f3f4f45519e74a",
+    nombre: "Patricia Alejandra Silva",
+    cedula: "V-19456789",
+    correo: "contador@loscappones.coop",
+    telefono: "+584240505050",
+    direccion: "Av. Las Ciencias, Colinas de Bello Monte",
+    sexo: "F",
+    fechaNacimiento: new Date("1992-07-29"),
+    estadoCivil: "Soltero",
+    cargo: Cargo.CONTADOR,
+  },
+  {
+    index: 5,
+    walletAddress: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
+    privateKey: "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba",
+    nombre: "Gabriel Antonio Torres",
+    cedula: "V-20123456",
+    correo: "gabriel.torres@loscappones.coop",
+    telefono: "+584120606060",
+    direccion: "Urbanización Vista Alegre, Calle 3",
+    sexo: "M",
+    fechaNacimiento: new Date("1994-01-12"),
+    estadoCivil: "Soltero",
+    cargo: null,
+  },
+  {
+    index: 6,
+    walletAddress: "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+    privateKey: "0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e",
+    nombre: "Mariana Isabel Castillo",
+    cedula: "V-21345678",
+    correo: "mariana.castillo@loscappones.coop",
+    telefono: "+584140707070",
+    direccion: "Av. Francisco de Miranda, Edif. Centro",
+    sexo: "F",
+    fechaNacimiento: new Date("1995-06-25"),
+    estadoCivil: "Casado",
+    cargo: null,
+  },
+  {
+    index: 7,
+    walletAddress: "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
+    privateKey: "0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356",
+    nombre: "Javier Enrique Paredes",
+    cedula: "V-22456789",
+    correo: "javier.paredes@loscappones.coop",
+    telefono: "+584160808080",
+    direccion: "Calle Los Cerezos, Casa #45, El Valle",
+    sexo: "M",
+    fechaNacimiento: new Date("1997-08-14"),
+    estadoCivil: "Soltero",
+    cargo: null,
+  },
+  {
+    index: 8,
+    walletAddress: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
+    privateKey: "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
+    nombre: "Sofia Valentina Gómez",
+    cedula: "V-23567890",
+    correo: "sofia.gomez@loscappones.coop",
+    telefono: "+584240909090",
+    direccion: "Residencias Paraíso, Torre A, Apto 8-C",
+    sexo: "F",
+    fechaNacimiento: new Date("1998-12-05"),
+    estadoCivil: "Soltero",
+    cargo: null,
+  },
+  {
+    index: 9,
+    walletAddress: "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720",
+    privateKey: "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6",
+    nombre: "Luis Fernando Alvarado",
+    cedula: "V-24678901",
+    correo: "luis.alvarado@loscappones.coop",
+    telefono: "+584121010101",
+    direccion: "Av. Universidad, Edif. Imperial, Piso 2",
+    sexo: "M",
+    fechaNacimiento: new Date("2000-04-20"),
+    estadoCivil: "Soltero",
+    cargo: null,
+  },
+];
+
+async function fetchLiveAnvilAccounts(): Promise<string[]> {
+  const rpcEndpoints = [
+    process.env.NEXT_PUBLIC_ANVIL_RPC_URL,
+    "http://anvil:8545",
+    "http://127.0.0.1:8545",
+    "http://localhost:8545",
+  ].filter(Boolean) as string[];
+
+  for (const url of rpcEndpoints) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "eth_accounts", params: [], id: 1 }),
+      });
+      const data = await res.json();
+      if (data?.result && Array.isArray(data.result) && data.result.length > 0) {
+        console.log(`🔗 Conectado dinámicamente a Anvil RPC (${url}). ${data.result.length} cuentas capturadas.`);
+        return data.result;
+      }
+    } catch {
+      // Ignorar y probar siguiente endpoint
+    }
+  }
+  console.log("ℹ️ No se pudo conectar a un nodo Anvil activo en este paso. Se usarán las 10 cuentas estáticas predeterminadas.");
+  return [];
+}
+
+function exportAnvilAccountsMd(accounts: typeof DEFAULT_ANVIL_ACCOUNTS) {
+  const ownerAcc = accounts[0];
+  const availableAccs = accounts.slice(1);
+
+  const mdContent = `# 🔑 Cuentas Nativas de Anvil y Estado de Despliegue
+
+Este documento registra oficialmente las **10 Cuentas Nativas del servicio Anvil (Chain ID 31337)**.
+En la inicialización del sistema, **únicamente la Cuenta #0** es registrada como **Owner de Despliegue y Contralor** de la Cooperativa. Las cuentas 1 a 9 están disponibles para la asignación manual por la Junta Directiva durante el Setup.
+
+---
+
+## 🏛️ Cuenta Owner / Deployer (Cuenta #0)
+
+| # | Rol en Sistema | Nombre | Dirección Wallet (Anvil) | Clave Privada (Private Key) | Estado DB |
+|---|---|---|---|---|---|
+| **0** | **Owner / Contralor** | Ana Lucía Morales | \`${ownerAcc.walletAddress}\` | \`${ownerAcc.privateKey}\` | \`ASIGNADO (CONTRALOR)\` |
+
+---
+
+## 👤 Cuentas Anvil Disponibles para Asignación (Cuentas 1 a 9)
+
+| # | Dirección Wallet (Anvil) | Clave Privada (Private Key) | Saldo Inicial | Estado |
+|---|---|---|---|---|
+${availableAccs
+  .map(
+    (a) =>
+      `| **${a.index}** | \`${a.walletAddress}\` | \`${a.privateKey}\` | \`10,000.00 ETH\` | \`DISPONIBLE PARA SETUP\` |`
+  )
+  .join("\n")}
+
+---
+
+### ℹ️ Parámetros de Red Anvil
+- **Chain ID:** \`31337\`
+- **RPC Endpoint Local:** \`http://127.0.0.1:8545\`
+- **RPC Endpoint Google Cloud:** \`http://34.132.231.119:8545\`
+- **HD Mnemonic:** \`test test test test test test test test test test test junk\`
+- **Derivation Path:** \`m/44'/60'/0'/0/\`
+`;
+
+  try {
+    const rootPath = path.resolve(__dirname, "../../ANVIL_ACCOUNTS.md");
+    fs.writeFileSync(rootPath, mdContent, "utf-8");
+    console.log(`📄 Archivo de cuentas generado/actualizado exitosamente en: ${rootPath}`);
+  } catch (err) {
+    console.warn("No se pudo escribir el archivo ANVIL_ACCOUNTS.md:", err);
+  }
+}
+
+async function main() {
+  console.log("Iniciando seed de base de datos (Consulta Dinámica a Anvil RPC)...");
+
+  const liveAddresses = await fetchLiveAnvilAccounts();
+
+  // Actualizar las direcciones si Anvil respondió dinámicamente
+  const finalAccounts = DEFAULT_ANVIL_ACCOUNTS.map((acc, idx) => {
+    if (liveAddresses[idx]) {
+      return { ...acc, walletAddress: liveAddresses[idx] };
+    }
+    return acc;
+  });
+
+  // Exportar el archivo ANVIL_ACCOUNTS.md
+  exportAnvilAccountsMd(finalAccounts);
+
+  // 1. Configuración de versión de sistema
+  await prisma.configuracion.upsert({
+    where: { clave: "VERSION_SISTEMA" },
+    update: { valor: "2.1.0", descripcion: "Entorno DAO Los Cappones - 10 Cuentas Dinámicas de Anvil" },
+    create: { clave: "VERSION_SISTEMA", valor: "2.1.0", descripcion: "Entorno DAO Los Cappones - 10 Cuentas Dinámicas de Anvil" },
+  });
+
+  const fechaInicio = new Date();
+  const fechaFin = new Date();
+  fechaFin.setFullYear(fechaInicio.getFullYear() + 2);
+
+  // 2. Limpiar registros previos para evitar conflictos de cedula o walletAddress
+  await prisma.acta.deleteMany({});
+  await prisma.voto.deleteMany({});
+  await prisma.aval.deleteMany({});
+  await prisma.propuesta.deleteMany({});
+  await prisma.directivo.deleteMany({});
+  await prisma.socio.deleteMany({});
+
+  // 3. Insertar ÚNICAMENTE la Cuenta #0 de Anvil como Socio y Contralor (Owner de Despliegue)
+  const ownerAcc = finalAccounts[0];
+  const socioOwner = await prisma.socio.create({
+    data: {
+      nombre: "Ana Lucía Morales (Owner Contralor)",
+      cedula: "V-12533620",
+      correo: "contralor.owner@loscappones.coop",
+      walletAddress: ownerAcc.walletAddress,
+      telefono: "+584120101010",
+      direccion: "Av. Principal Los Cappones, Edif. Presidencia, Piso 3",
+      sexo: "F",
+      fechaNacimiento: new Date("1982-05-14"),
+      estadoCivil: "Casado",
+      activo: true,
+    },
+  });
+
+  await prisma.directivo.create({
+    data: {
+      socioId: socioOwner.id,
+      cargo: Cargo.CONTRALOR,
+      fechaInicio: fechaInicio,
+      fechaFin: fechaFin,
+      activo: true,
+    },
+  });
+
+  console.log(`✅ Owner / Contralor Inicializado [Cuenta #0]: ${socioOwner.nombre} (${ownerAcc.walletAddress})`);
+  console.log(`ℹ️ Cuentas #1 a #9 listas en Anvil para asignación manual durante el Setup por la Junta Directiva.`);
+
+  // 4. Configurar estado inicial del Setup
+  await prisma.configuracion.upsert({
+    where: { clave: "SETUP_COMPLETADO" },
+    update: { valor: "false", descripcion: "Indica si la Junta Directiva ha sido completada (5 cargos)" },
+    create: { clave: "SETUP_COMPLETADO", valor: "false", descripcion: "Indica si la Junta Directiva ha sido completada (5 cargos)" },
+  });
+
+  console.log("Seed completado exitosamente: Solo Cuenta #0 inicializada en PostgreSQL como Contralor.");
+}
+
+main()
+  .catch((e) => {
+    console.error("Error durante el seed:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

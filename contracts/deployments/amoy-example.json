@@ -1,0 +1,13 @@
+{
+  "network": "polygon-amoy",
+  "chainId": 80002,
+  "deployer": "0x2d3db17af7a2e9c256c9204ae8881d63ad1df833",
+  "contracts": {
+    "MinimalForwarder": "0x... (se genera al desplegar)",
+    "ActaHashRegistry": "0x... (se genera al desplegar)",
+    "CooperativaCappones": "0x... (se genera al desplegar)",
+    "VotacionPropuestas": "0x... (se genera al desplegar)"
+  },
+  "deployedAt": "2026-07-31T20:00:00Z",
+  "verified": false
+}
