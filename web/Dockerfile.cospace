@@ -1,0 +1,45 @@
+# Dockerfile optimizado para Cospace/CI
+# nombre: web/Dockerfile.cospace
+
+FROM node:20-alpine AS base
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias
+RUN apk add --no-cache libc6-compat python3 make g++ bash git
+
+# Copiar package.json y lock para cache de dependencias
+COPY web/package.json web/package-lock.json ./
+
+# Instalar dependencias (producción) y generadores de prisma
+RUN npm ci --omit=dev
+
+# Copiar código fuente
+COPY web/ ./
+
+# Generar Prisma client
+RUN npx prisma generate
+
+# Build de Next.js
+RUN npm run build
+
+# Producción runtime
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Crear usuario no-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+COPY --from=base /app/.next ./.next
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/public ./public
+COPY --from=base /app/package.json ./package.json
+COPY --from=base /app/prisma ./prisma
+
+# Cambiar propietario
+RUN chown -R appuser:appgroup /app
+USER appuser
+
+EXPOSE 3000
+CMD ["npm", "run", "start"]
