@@ -1,93 +1,115 @@
-# 📐 Casos de Uso y Diagramas de Procesos — DAO Los Cappones
+# 📐 Casos de Uso y Diagramas de Procesos — DAO Gasless EIP-2771
 
-Este documento especifica los **Casos de Uso Formales** y visualiza los **Diagramas de Secuencia** para los flujos operativos fundamentales de la plataforma **DAO Los Cappones**.
+Este documento especifica los **Casos de Uso Formales** y visualiza los **Diagramas de Secuencia** para los flujos operativos fundamentales de la plataforma **DAO con Votación Gasless**.
 
 ---
 
 ## 1. Casos de Uso Formales
 
 ### CU-01: Autenticación y Conexión de Wallet
-- **Actor:** Socio / Directivo / SuperUsuario.
-- **Precondiciones:** Tener MetaMask instalado con la red Anvil/Amoy configurada.
+- **Actor:** Socio Certificado / Visitante.
+- **Precondiciones:** Tener MetaMask instalado con la red Anvil (Local: 31337) o Testnet/Mainnet configurada.
 - **Flujo Principal:**
-  1. El usuario accede al Dashboard web ([http://localhost:3000](http://localhost:3000)).
-  2. Presiona el botón **"Conectar MetaMask"**.
-  3. MetaMask solicita la aprobación de conexión.
-  4. El servidor valida la firma criptográfica del mensaje y retorna el rol del socio.
+  1. El usuario accede a la plataforma web (`http://localhost:3000` o Cloud Run).
+  2. Presiona el botón **"Conectar Wallet"**.
+  3. MetaMask solicita aprobación de conexión.
+  4. El sistema verifica on-chain si la billetera está inscrita como socio activo (`isMember`).
+  5. Si no está inscrita, el sistema restringe el acceso al Dashboard y redirige al usuario a la vista de inscripción (`/`).
 
-### CU-02: Creación de Propuesta con Validaciones y 2FA
-- **Actor:** Presidente / Contralor / Contador (Junta Directiva).
-- **Precondiciones:** Poseer rol directivo activo y código TOTP 2FA.
+### CU-02: Inscripción de Socio (Depósito de 3.0 ETH)
+- **Actor:** Usuario No Inscrito.
+- **Precondiciones:** Billetera conectada con al menos 3.0 ETH disponibles.
 - **Flujo Principal:**
-  1. El directivo ingresa a la pestaña *"Propuestas"*.
-  2. Completa los campos: Nombre, Monto, Descripción, Wallet Receptora y Token 2FA.
-  3. El sistema valida el 2FA en `/api/proposals` y registra la propuesta en blockchain y PostgreSQL.
-  4. Se generan automáticamente los registros de avales pendientes para los demás directivos.
+  1. El usuario visualiza el muro de membresía en el Dashboard.
+  2. Presiona **"🛡️ Inscribirse como Socio (3.0 ETH)"**.
+  3. MetaMask solicita confirmar la transacción enviando 3.0 ETH al contrato `DAOVoting.sol`.
+  4. La transacción es minada on-chain (`registerMember()`).
+  5. El usuario recibe la certificación de socio, su ponderación financiera y acceso completo al Dashboard de gobernanza.
 
-### CU-03: Votación Gasless EIP-2771
-- **Actor:** Socio Cooperativista.
-- **Precondiciones:** Estatus de socio activo y propuesta en estado `EN_VOTACION`.
+### CU-03: Creación de Propuesta de Financiamiento
+- **Actor:** Socio Certificado (≥10% del balance o socio activo).
+- **Precondiciones:** Estar registrado como socio de la DAO.
 - **Flujo Principal:**
-  1. El socio selecciona la propuesta y presiona **"Votar (Gasless)"**.
-  2. La app genera una firma off-chain EIP-712 que contiene la propuesta, elección y nonce.
-  3. La firma se envía al endpoint `/api/relay`.
-  4. El Relayer valida el nonce, ejecuta `MinimalForwarder.execute()` pagando el gas y guarda el hash del voto.
+  1. El socio navega a la sección **"Crear Propuesta"** (`/dashboard/proposals/create`).
+  2. Completa los campos: Título, Beneficiario (Address), Monto en ETH, Duración de votación (días) y Descripción/Justificación.
+  3. Elige la modalidad de envío: **⚡ Sin Gas (Meta-Transacción Relayer)** o **⛽ Directo (Pagando Gas)**.
+  4. Si elige Sin Gas, MetaMask abre la ventana EIP-712 mostrando en texto claro: *Acción: 🛡️ Creación de Propuesta DAO* y los detalles financieros.
+  5. La propuesta es registrada en el Smart Contract con un ID secuencial único (1, 2, 3...).
 
-### CU-04: Ejecución y Desembolso de Tesorería
-- **Actor:** Miembro del Directorio.
-- **Precondiciones:** Propuesta aprobada por quórum y quórum de avales firmados.
+### CU-04: Votación Gasless EIP-712 (Mensaje Legible)
+- **Actor:** Socio Certificado.
+- **Precondiciones:** Estatus de socio activo y propuesta en periodo de votación activa.
 - **Flujo Principal:**
-  1. El directivo presiona **"Ejecutar Propuesta"**.
-  2. `VotacionPropuestas.sol` cambia el estado a `EJECUTADA`.
-  3. `VotacionPropuestas.sol` invoca a `CooperativaCappones.sol.pagarPropuestaInversion()`.
-  4. La tesorería transfiere el monto exacto en Ether a la wallet receptora.
+  1. El socio ingresa a la sección **"Centro de Votación"** (`/dashboard/voting`).
+  2. Selecciona la postura de voto: **👍 A FAVOR**, **👎 EN CONTRA** o **⚪ ABSTENCIÓN**.
+  3. MetaMask despliega la ventana de firma EIP-712 con los campos legibles:
+     - **Acción**: `🗳️ Emisión de Voto en Propuesta DAO`
+     - **Detalles**: `Propuesta ID: #X | Decisión: 👍 A FAVOR | Modalidad: ⚡ Meta-Transacción Sin Gas`
+  4. El socio firma el mensaje off-chain sin pagar gas.
+  5. El frontend envía la firma a `/api/relay`.
+  6. El Relayer verifica el nonce, ejecuta `MinimalForwarder.execute()` y registra el voto en la blockchain.
+  7. La interfaz se inhabilita mostrando el distintivo `🔒 Voto Definitivo Registrado`.
+
+### CU-05: Regla de Voto Único Inmutable
+- **Actor:** Socio Certificado.
+- **Precondiciones:** Haber emitido un voto previo en la propuesta actual.
+- **Flujo Principal:**
+  1. El socio intenta emitir un voto secundario en la misma propuesta.
+  2. El Smart Contract revierte la ejecución con `require(!hasVoted, "Ya has emitido tu voto para esta propuesta")`.
+  3. La interfaz captura la restricción y confirma la certificación del voto previamente emitido.
+
+### CU-06: Ejecución Automática de Propuestas y Desembolso
+- **Actor:** Daemon de Ejecución / Cualquier Socio.
+- **Precondiciones:** Fecha límite de votación expirada, retardo de ejecución cumplido y votos positivos > votos negativos.
+- **Flujo Principal:**
+  1. El proceso en segundo plano (Daemon de Ejecución `/api/daemon`) o un socio presiona **"🚀 Ejecutar Propuesta"**.
+  2. `DAOVoting.sol` verifica la validez del quórum.
+  3. El contrato marca `executed = true` y transfiere automáticamente los ETH de la tesorería al beneficiario (`recipient.call{value: amount}`).
 
 ---
 
 ## 2. Diagramas de Procesos (Mermaid)
 
-### 2.1 Diagrama de Secuencia: Votación Gasless EIP-2771
+### 2.1 Diagrama de Secuencia: Votación Gasless EIP-712 con Mensaje Legible
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Socio
-    participant Web as Web Dashboard
-    participant MM as MetaMask
+    actor Socio as Socio Certificado
+    participant Web as Web Dashboard (Next.js 15)
+    participant MM as MetaMask (EIP-712)
     participant API as Relayer API (/api/relay)
     participant FWD as MinimalForwarder.sol
-    participant VOT as VotacionPropuestas.sol
+    participant DAO as DAOVoting.sol
 
-    Socio->>Web: Clic en "Votar (Gasless)"
-    Web->>API: Solicita Nonce actual de la wallet
-    API-->>Web: Retorna Nonce (ej: 0)
-    Web->>MM: Solicita Firma EIP-712 (Request)
-    MM-->>Web: Retorna Firma digital (signature)
-    Web->>API: POST /api/relay {request, signature, wallet}
-    API->>FWD: verify(request, signature)
-    FWD-->>API: Firma Válida (true)
+    Socio->>Web: Selecciona Voto (A FAVOR / EN CONTRA)
+    Web->>FWD: getNonce(socioAddress)
+    FWD-->>Web: Retorna Nonce actual
+    Web->>MM: signTypedData(Domain, Types, ForwardRequest)
+    Note over MM: Muestra mensaje legible:<br/>• Acción: 🗳️ Emisión de Voto<br/>• Detalles: Propuesta #1 | 👍 A FAVOR
+    MM-->>Web: Firma criptográfica (signature)
+    Web->>API: POST /api/relay {request, signature}
     API->>FWD: execute(request, signature) [Pagando Gas]
-    FWD->>VOT: votar(propuestaId, voto)
-    VOT-->>FWD: Voto Registrado
+    FWD->>DAO: vote(proposalId, voteType)
+    DAO->>DAO: require(!hasVoted, "Ya has emitido tu voto")
+    DAO-->>FWD: Voto Registrado
     API-->>Web: 200 OK + Transaction Hash
-    Web-->>Socio: Confirmación visual de voto exitoso
+    Web-->>Socio: Insignia 🔒 Voto Definitivo Registrado
 ```
 
-### 2.2 Diagrama de Secuencia: Desembolso de Tesorería Aprobado
+### 2.2 Diagrama de Secuencia: Ejecución y Desembolso de Tesorería
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Directivo
-    participant VOT as VotacionPropuestas.sol
-    participant TES as CooperativaCappones.sol
-    actor Receptora as Wallet Receptora
+    actor Daemon as Daemon / Socio
+    participant DAO as DAOVoting.sol
+    actor Receptora as Wallet Beneficiaria
 
-    Directivo->>VOT: ejecutarPropuesta(propuestaId)
-    VOT->>VOT: Validar estado == APROBADA y !ejecutada
-    VOT->>VOT: Marcar estado = EJECUTADA
-    VOT->>TES: pagarPropuestaInversion(receptora, monto)
-    TES->>TES: Validar msg.sender == votacionContract
-    TES->>TES: Validar balance tesorería >= monto
-    TES->>Receptora: Transferencia de Ether (call{value: monto})
-    Receptora-->>TES: Transferencia Exitosa
-    TES-->>VOT: Event PagoPropuestaEjecutado
+    Daemon->>DAO: executeProposal(proposalId)
+    DAO->>DAO: Validar block.timestamp >= votingDeadline
+    DAO->>DAO: Validar block.timestamp >= executionDelay
+    DAO->>DAO: Validar forVotes > againstVotes
+    DAO->>DAO: Marcar executed = true
+    DAO->>Receptora: Transferencia directa ETH (call{value: amount})
+    Receptora-->>DAO: Transferencia Exitosa (200 OK)
+    DAO-->>Daemon: Event ProposalExecuted(id, recipient, amount)
 ```

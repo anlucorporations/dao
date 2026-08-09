@@ -1,107 +1,81 @@
-# 🛠️ Manual Técnico de la Plataforma DAO Los Cappones
+# 🛠️ Manual Técnico y Arquitectura del Sistema — DAO Gasless EIP-2771
 
-Este documento constituye el **Manual Técnico** oficial de la plataforma **DAO Los Cappones**, detallando la arquitectura del sistema, el diseño de Smart Contracts, las integraciones API, los mecanismos de seguridad y la infraestructura containerizada.
+Este documento contiene las especificaciones técnicas de la arquitectura, Smart Contracts, relayer EIP-2771, frontend Next.js 15 y el despliegue en Google Cloud Run.
 
 ---
 
-## 1. Arquitectura del Sistema
+## 1. Arquitectura General
 
-La solución sigue una arquitectura basada en microservicios containerizados y desacoplados:
+La plataforma está estructurada en 4 capas de arquitectura desacopladas:
 
-```mermaid
-graph TD
-    subgraph Cliente Web
-        UI[App React / Next.js 15]
-        MM[Wallet MetaMask]
-    end
+1. **Capa de Contratos Inteligentes (Solidity / Foundry)**:
+   - `MinimalForwarder.sol`: Verificador de firmas EIP-712 y ejecutor de meta-transacciones.
+   - `DAOVoting.sol`: Contrato de gobernanza que hereda de `ERC2771Context`.
+2. **Capa Frontend (Next.js 15 App Router & React 19)**:
+   - Renderizado dinámico, TailwindCSS, ethers.js v6.
+   - Guardias de acceso (`DashboardAccessGuard.tsx`) y componentes modulares de gobernanza.
+3. **Capa de Relayer & API Serverless**:
+   - `/api/relay`: Endpoint de Next.js que recibe firmas EIP-712, verifica el nonce y transmite la transacción pagando la comisión de gas.
+   - `/api/daemon`: Proceso automatizado en segundo plano para la verificación y ejecución de propuestas aprobadas.
+4. **Capa de Infraestructura**:
+   - **Local**: Nodo Anvil local (`http://127.0.0.1:8545`, ChainId `31337`).
+   - **Nube**: Google Cloud Run (Contenedor Serverless Node 20 Alpine).
 
-    subgraph Capa API & Servidor Next.js
-        API_AUTH[/api/auth - Autenticacion SIWE / 2FA/]
-        API_PROP[/api/proposals - Gestion de Propuestas/]
-        API_RELAY[/api/relay - Relayer Gasless EIP-2771/]
-        API_REP[/api/reports - Certificacion de Actas/]
-        PRISMA[Prisma ORM]
-    end
+---
 
-    subgraph Base de Datos
-        PG[(PostgreSQL 16)]
-    end
+## 2. Detalles de Smart Contracts
 
-    subgraph Blockchain Layer (EVM)
-        FWD[MinimalForwarder.sol]
-        VOT[VotacionPropuestas.sol]
-        TES[CooperativaCappones.sol Tesoreria]
-        REG[ActaHashRegistry.sol]
-    end
-
-    UI -->|Conexion Web3| MM
-    UI -->|Peticiones REST| API_AUTH
-    UI -->|Peticiones REST| API_PROP
-    UI -->|Meta-Tx Firmada| API_RELAY
-    API_AUTH & API_PROP & API_RELAY & API_REP --> PRISMA
-    PRISMA --> PG
-    API_RELAY -->|Relay Signer Admin| FWD
-    FWD -->|Call Exec| VOT
-    VOT -->|Desembolso Autorizado| TES
-    VOT -->|Registro Hash| REG
+### MinimalForwarder.sol
+```solidity
+struct ForwardRequest {
+    address from;
+    address to;
+    uint256 value;
+    uint256 gas;
+    uint256 nonce;
+    string accion;
+    string detalles;
+    bytes data;
+}
 ```
+- **Firma EIP-712**: Calcula el `structHash` utilizando Keccak-256 e incluye campos de texto legible para MetaMask.
+- **Validación Nonces**: Control anti-replay individual (`mapping(address => uint256)`).
+
+### DAOVoting.sol
+- **Membresía**: Requiere `registerMember{value: 3 ether}()`.
+- **Voto Único**: Inmutabilidad garantizada por `require(!hasVoted[proposalId][sender])`.
+- **Sender Contextual**: Utiliza `_msgSender()` provisto por `ERC2771Context` para extraer la dirección del socio original en meta-transacciones.
 
 ---
 
-## 2. Especificación de Smart Contracts (Solidity ^0.8.20)
+## 3. Pruebas Automatizadas (Foundry Test Suite)
 
-### 2.1 `CooperativaCappones.sol`
-Contrato central de tesorería y registro de socios y miembros de la Junta Directiva.
-
-- **Variables Estado Clave:**
-  - `mapping(address => Socio) public socios;`
-  - `mapping(address => Directivo) public directivos;`
-  - `address public votacionContract;`
-  - `uint256 public capitalTotal;`
-- **Funciones Principales:**
-  - `depositarAporte() external payable`: Permite a los socios depositar capital a la tesorería.
-  - `setVotacionContract(address _votacionContract) external onlyOwner`: Asigna el contrato autorizado para solicitar retiros de inversión.
-  - `pagarPropuestaInversion(address payable _receptora, uint256 _monto) external onlyVotacion`: Realiza el desembolso a la wallet receptora aprobada.
-
-### 2.2 `VotacionPropuestas.sol`
-Contrato de gobernanza compatible con el estándar de metatransacciones **ERC-2771** (`ERC2771Context`).
-
-- **Funciones Principales:**
-  - `crearPropuesta(string memory _nombre, string memory _descripcion, uint256 _monto, address _receptora, TipoPropuesta _tipo)`
-  - `firmarAval(uint256 _id) external onlyDirectivo`: Registra la firma de respaldo de los miembros de la Junta Directiva.
-  - `votar(uint256 _id, TipoVoto _voto) external onlySocio`: Procesa el voto emitido directamente o mediante metatransacción.
-  - `ejecutarPropuesta(uint256 _id) external onlyDirectivo`: Comprueba la aprobación y activa la transferencia en la tesorería de `CooperativaCappones.sol`.
-
-### 2.3 `MinimalForwarder.sol`
-Implementación estándar EIP-2771 para metatransacciones gasless.
-
-- **Estructura `ForwardRequest`:**
-  - `address from`: Dirección del socio emisor.
-  - `address to`: Contrato objetivo (`VotacionPropuestas`).
-  - `uint256 value`: Valor en wei (0 para votos).
-  - `uint256 gas`: Límite de gas.
-  - `uint256 nonce`: Anti-replay nonce.
-  - `bytes data`: Payload codificado de la función `votar(...)`.
+La suite de pruebas contiene **10 pruebas unitarias e integración** pasadas con 100% de éxito:
+```bash
+forge test
+```
+Resultados:
+- `testRegisterMemberSuccess()` (PASS)
+- `testRegisterMemberFailsAlreadyRegistered()` (PASS)
+- `testCreateProposalSuccess()` (PASS)
+- `testVoteFor()` (PASS)
+- `testVoteFailsIfAlreadyVoted()` (PASS)
+- `testMetaTransactionCreateProposal()` (PASS)
+- `testExecuteApprovedProposal()` (PASS)
 
 ---
 
-## 3. Seguridad y Autenticación Backend
+## 4. Comandos de Inicialización Local
 
-1. **Firma Criptográfica (SIWE / EIP-191):**
-   Cada petición a `/api/auth` requiere la verificación de la firma digital con `ethers.verifyMessage(mensaje, signature)` para autenticar la propiedad de la wallet.
-2. **Segundo Factor de Autenticación (2FA TOTP):**
-   Los miembros de la Junta Directiva poseen un secreto TOTP cifrado en PostgreSQL. Las acciones de creación de propuestas y firmas de avales exigen la validación con `speakeasy.totp.verify`.
-3. **Control Anti-Replay en Relayer:**
-   En `/api/relay`, el servidor verifica la firma en `MinimalForwarder` y consulta el nonce actual del usuario antes de enviar la transacción pagada por el admin signer.
+```bash
+# 1. Iniciar nodo Anvil
+cd sc
+anvil
 
----
+# 2. Desplegar contratos e inscribir owner (3 ETH)
+forge script script/Deploy.s.sol:DeployScript --rpc-url http://127.0.0.1:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-## 4. Orquestación Docker Compose
-
-El sistema opera en un stack multi-contenedor definido en `docker-compose.yml`:
-
-| Contenedor | Imagen Base | Puerto Interno | Puerto Host | Función |
-|---|---|---|---|---|
-| `cooperativa-postgres` | `postgres:16-alpine` | `5432` | `5432` | Base de Datos relacional |
-| `cooperativa-anvil` | `ghcr.io/foundry-rs/foundry` | `8545` | `8545` | Nodo blockchain local y script autodeploy |
-| `cooperativa-web` | `node:20-alpine` (Production) | `3000` | `3000` | Frontend y API Routes compilados |
+# 3. Iniciar Frontend Web
+cd ../web
+npm run dev
+```

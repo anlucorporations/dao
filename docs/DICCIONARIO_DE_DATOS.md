@@ -1,118 +1,87 @@
-# 📖 Diccionario de Datos y Modelo de Esquemas — DAO Los Cappones
+# 📖 Diccionario de Datos y Modelo de Esquemas — DAO Gasless EIP-2771
 
-Este documento define la estructura detallada del **Modelo de Datos Relacional (PostgreSQL via Prisma ORM)** y los **Tipos de Datos en Smart Contracts (Solidity)** de la plataforma **DAO Los Cappones**.
-
----
-
-## 1. Modelo de Datos Relacional (PostgreSQL / Prisma)
-
-### 1.1 Tabla `Socio`
-Almacena la información de identificación y estado de los socios cooperativistas.
-
-| Campo | Tipo PostgreSQL | Nulo | Descripción / Restricciones |
-|---|---|:---:|---|
-| `id` | `UUID` | No | Llave Primaria (Default: `uuid()`). |
-| `cedula` | `VARCHAR(20)` | No | Cédula de Identidad única (`@unique`). |
-| `nombreCompleto` | `VARCHAR(150)` | No | Nombre completo del socio. |
-| `correo` | `VARCHAR(150)` | No | Correo electrónico único (`@unique`). |
-| `walletAddress` | `VARCHAR(42)` | No | Dirección pública Ethereum única (`@unique`). |
-| `activo` | `BOOLEAN` | No | Estado de afiliación (`Default: true`). |
-| `fechaRegistro` | `TIMESTAMP` | No | Fecha de creación (`Default: now()`). |
-
-### 1.2 Tabla `Directivo`
-Almacena las asignaciones de la Junta Directiva y secretos de autenticación 2FA.
-
-| Campo | Tipo PostgreSQL | Nulo | Descripción / Restricciones |
-|---|---|:---:|---|
-| `id` | `UUID` | No | Llave Primaria. |
-| `socioId` | `UUID` | No | Llave Foránea -> `Socio(id)`. |
-| `cargo` | `ENUM` | No | `PRESIDENTE`, `VICEPRESIDENTE`, `SECRETARIO`, `CONTRALOR`, `CONTADOR`. |
-| `secret2FA` | `VARCHAR(255)` | Sí | Clave secreta cifrada para verificación TOTP. |
-| `activo` | `BOOLEAN` | No | Estado del cargo (`Default: true`). |
-| `fechaFinCargo` | `TIMESTAMP` | Sí | Expiración del periodo legal (2 años). |
-
-### 1.3 Tabla `Propuesta`
-Almacena las propuestas de inversión y resoluciones de gobernanza.
-
-| Campo | Tipo PostgreSQL | Nulo | Descripción / Restricciones |
-|---|---|:---:|---|
-| `id` | `UUID` | No | Llave Primaria. |
-| `propuestaChainId`| `VARCHAR(50)` | Sí | ID numérico correspondiente en el Smart Contract. |
-| `nombre` | `VARCHAR(255)` | No | Título de la propuesta. |
-| `descripcion` | `TEXT` | No | Exposición de motivos y detalle técnico. |
-| `monto` | `DECIMAL(18,4)` | No | Monto a financiar en Ether / POL. |
-| `walletReceptora` | `VARCHAR(42)` | No | Wallet destino del pago de tesorería. |
-| `tipo` | `ENUM` | No | `INVERSION` o `ADMINISTRATIVA`. |
-| `estado` | `ENUM` | No | `BORRADOR`, `POR_DISCUTIR`, `EN_VOTACION`, `APROBADA`, `RECHAZADA`, `EJECUTADA`. |
-| `disponible` | `BOOLEAN` | No | Control de visibilidad pública (`Default: true`). |
-| `creadorId` | `UUID` | No | Llave Foránea -> `Socio(id)`. |
-
-### 1.4 Tabla `Aval`
-Registra el respaldo requerido de los directivos antes de publicar una propuesta.
-
-| Campo | Tipo PostgreSQL | Nulo | Descripción / Restricciones |
-|---|---|:---:|---|
-| `id` | `UUID` | No | Llave Primaria. |
-| `propuestaId` | `UUID` | No | Llave Foránea -> `Propuesta(id)`. |
-| `directivoId` | `UUID` | No | Llave Foránea -> `Directivo(id)`. |
-| `firmado` | `BOOLEAN` | No | Indica si el directivo avaló (`Default: false`). |
-| `fechaFirma` | `TIMESTAMP` | Sí | Momento exacto del registro del aval. |
-
-### 1.5 Tabla `Voto`
-Registra los votos procesados en la plataforma.
-
-| Campo | Tipo PostgreSQL | Nulo | Descripción / Restricciones |
-|---|---|:---:|---|
-| `id` | `UUID` | No | Llave Primaria. |
-| `propuestaId` | `UUID` | No | Llave Foránea -> `Propuesta(id)`. |
-| `socioId` | `UUID` | No | Llave Foránea -> `Socio(id)`. |
-| `tipo` | `ENUM` | No | `ACEPTADA`, `RECHAZADA`, `ABSTENCION`. |
-| `hashSecreto` | `VARCHAR(66)` | No | Hash Keccak-256 para preservar el secreto del voto. |
-| `txHash` | `VARCHAR(66)` | Sí | Hash de transacción en la blockchain. |
+Este documento define la estructura de datos on-chain en Smart Contracts (**Solidity / EIP-2771**) y las estructuras DTO del Frontend (**TypeScript / Next.js 15**).
 
 ---
 
-## 2. Structs y Enums en Smart Contracts (Solidity)
+## 1. Estructuras On-Chain (Smart Contracts Solidity)
 
-### 2.1 Struct `Socio` (`CooperativaCappones.sol`)
-```solidity
-struct Socio {
-    address wallet;
-    uint256 balance;
-    uint256 fechaRegistro;
-    bool activo;
-    address walletRecuperacion;
+### 1.1 Struct `Proposal` (`DAOVoting.sol`)
+Almacena la información de gobernanza y financiera de cada propuesta registrada en la blockchain.
+
+| Campo | Tipo Solidity | Descripción / Restricciones |
+|---|---|---|
+| `id` | `uint256` | Identificador único secuencial (1, 2, 3...). |
+| `proposer` | `address` | Wallet del socio creador de la propuesta. |
+| `title` | `string` | Título descriptivo de la propuesta. |
+| `recipient` | `address` | Dirección pública Ethereum receptora de los fondos. |
+| `amount` | `uint256` | Monto solicitado en Ether (almacenado en Wei). |
+| `votingDeadline` | `uint256` | Timestamp UNIX de expiración del periodo de votación. |
+| `executionDelay` | `uint256` | Timestamp UNIX mínimo para permitir la ejecución. |
+| `executed` | `bool` | `true` si la propuesta ya desembolsó los fondos. |
+| `forVotes` | `uint256` | Contador acumulado de votos **A FAVOR**. |
+| `againstVotes` | `uint256` | Contador acumulado de votos **EN CONTRA**. |
+| `abstainVotes` | `uint256` | Contador acumulado de votos de **ABSTENCIÓN**. |
+| `description` | `string` | Memoria justificativa del proyecto. |
+
+### 1.2 Struct `ForwardRequest` (`MinimalForwarder.sol`)
+Estructura EIP-712 para meta-transacciones firmadas off-chain con transparencia en MetaMask.
+
+| Campo | Tipo Solidity | Tipo EIP-712 | Descripción |
+|---|---|---|---|
+| `from` | `address` | `address` | Dirección pública del socio emisor. |
+| `to` | `address` | `address` | Dirección del contrato objetivo (`DAOVoting.sol`). |
+| `value` | `uint256` | `uint256` | Valor en ETH a transferir con la llamada. |
+| `gas` | `uint256` | `uint256` | Límite de gas estimado para la ejecución. |
+| `nonce` | `uint256` | `uint256` | Contador secuencial de transacción por usuario anti-replay. |
+| `accion` | `string` | `string` | Texto legible en MetaMask (Ej: *🗳️ Emisión de Voto*). |
+| `detalles` | `string` | `string` | Descripción legible de la transacción para el socio. |
+| `data` | `bytes` | `bytes` | Payload ABI codificado de la función objetivo. |
+
+### 1.3 Enum `VoteType` (`DAOVoting.sol`)
+| Valor | Constante | Descripción |
+|:---:|---|---|
+| `0` | `NONE` | Estado por defecto / Sin voto registrado. |
+| `1` | `FOR` | Voto **A FAVOR** de la propuesta. |
+| `2` | `AGAINST` | Voto **EN CONTRA** de la propuesta. |
+| `3` | `ABSTAIN` | Voto de **ABSTENCIÓN**. |
+
+---
+
+## 2. Modelos de Datos en Frontend (TypeScript DTOs)
+
+### 2.1 Interface `Proposal` (`src/lib/contracts.ts`)
+```typescript
+export interface Proposal {
+  id: bigint;
+  proposer: string;
+  title: string;
+  recipient: string;
+  amount: bigint;
+  votingDeadline: bigint;
+  executionDelay: bigint;
+  executed: boolean;
+  forVotes: bigint;
+  againstVotes: bigint;
+  abstainVotes: bigint;
+  description: string;
+  userVote?: number;
 }
 ```
 
-### 2.2 Struct `Directivo` (`CooperativaCappones.sol`)
-```solidity
-struct Directivo {
-    address wallet;
-    Cargo cargo;
-    uint256 fechaInicio;
-    uint256 fechaFin;
-    bool activo;
-}
-```
-
-### 2.3 Struct `Propuesta` (`VotacionPropuestas.sol`)
-```solidity
-struct Propuesta {
-    uint256 id;
-    string nombre;
-    string descripcion;
-    uint256 monto;
-    address walletReceptora;
-    uint256 fechaCreacion;
-    uint256 votosFavor;
-    uint256 votosContra;
-    uint256 abstenciones;
-    uint256 avales;
-    EstadoPropuesta estado;
-    TipoPropuesta tipo;
-    bool ejecutada;
-    bool disponible;
-    uint256 fechaApelacion;
+### 2.2 Payload API Relayer (`/api/relay`)
+```json
+{
+  "request": {
+    "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "to": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "value": "0",
+    "gas": "1000000",
+    "nonce": "0",
+    "accion": "🗳️ Emisión de Voto en Propuesta DAO",
+    "detalles": "Propuesta ID: #1 | Decisión: 👍 A FAVOR | Modalidad: ⚡ Meta-Transacción Sin Gas",
+    "data": "0x..."
+  },
+  "signature": "0x..."
 }
 ```

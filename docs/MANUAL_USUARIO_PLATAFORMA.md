@@ -1,43 +1,41 @@
-# 👤 Manual de Usuario General — DAO Los Cappones
+# 👤 Manual de Usuario — Plataforma DAO Gasless EIP-2771
 
-Este manual instruye a los **Socios Cooperativistas** y **Directivos** en el uso completo de la plataforma web de gobernanza descentralizada.
-
----
-
-## 1. Acceso a la Plataforma y Conexión
-
-1. Abre tu navegador web e ingresa a la dirección [http://localhost:3000](http://localhost:3000).
-2. Asegúrate de tener activa la extensión de **MetaMask** con la red de la cooperativa.
-3. Haz clic en el botón **"Conectar MetaMask"** ubicado en el menú superior.
-4. Una vez conectada, verás tu dirección pública acortada y tu insignia de rol (`Socio`, `Presidente`, etc.).
+Bienvenido a la guía de usuario oficial de la plataforma **DAO con Votación Gasless**.
 
 ---
 
-## 2. Navegación por el Dashboard
+## 1. Conexión de Billetera y Membresía
 
-El sistema cuenta con un menú de pestañas accesibles en el encabezado:
-
-### 2.1 Pestaña 🏠 Inicio
-- Muestra el resumen del capital total disponible en la tesorería de la cooperativa.
-- Muestra el rol actual del usuario conectado y la red activa.
-
-### 2.2 Pestaña 📜 Propuestas
-- **Crear Propuesta (Directivos):** Completa el título, monto solicitado en ETH, wallet receptora, exposición de motivos y tu código 2FA. Haz clic en *"Registrar Propuesta"*.
-- **Firmar Aval (Directivos):** Revisa las propuestas creadas y presiona *"Firmar Aval"* para respaldar su publicación.
-- **Votar en Votaciones Gasless (Socios):** Selecciona *"Votar (Gasless)"*. MetaMask te solicitará únicamente una firma digital gratuita (sin cobro de comisiones de gas).
-
-### 2.3 Pestaña 👥 Directorio
-- Consulta los miembros activos de la Junta Directiva (Presidenta `anlu`, Vicepresidente, Secretaria, Contralor y Contador).
-- Revisa las cédulas y wallets oficiales asignadas a cada cargo.
-
-### 2.4 Pestaña 🛡️ Actas & Reportes
-- Consulta el registro inmutable de actas certificadas con su hash Keccak-256 / SHA-256 en la blockchain.
+1. **Acceso a la Web**: Ingresa a la URL de la plataforma (`http://localhost:3000` o la URL de Cloud Run).
+2. **Conectar MetaMask**: Haz clic en el botón **"Conectar Wallet"** en la esquina superior derecha.
+3. **Muro de Inscripción (3.0 ETH)**:
+   - Si tu billetera no está inscrita como socio, verás una pantalla de bienvenida con la opción de unirte.
+   - Presiona **"🛡️ Inscribirse como Socio (3.0 ETH)"** y confirma la transacción en MetaMask.
+   - Una vez confirmada, recibirás la insignia de **Socio Certificado** y podrás acceder al Dashboard.
 
 ---
 
-## 3. Preguntas Frecuentes y Soporte
+## 2. Creación de Propuestas
 
-- **¿Por qué no pago gas al votar?**  
-  La plataforma cuenta con un servicio de **Relayer Gasless** que asume el costo del gas en la blockchain por ti.
-- **¿Qué hago si mi transacción falla?**  
-  Asegúrate de tener la red local Anvil conectada en MetaMask (Chain ID `31337`).
+1. Dirígete a la sección **"Crear Propuesta"** en la barra lateral.
+2. Ingresa el Título, Beneficiario, Monto solicitado (ETH), Duración y la Justificación del proyecto.
+3. Selecciona la modalidad:
+   - **⚡ Sin Gas (Recomendado)**: Firmarás un mensaje EIP-712 en MetaMask **sin pagar comisiones**.
+   - **⛽ Directo**: Transacción normal pagando comisiones de gas.
+4. En MetaMask verás la ventana de firma con los detalles claros del proyecto. Haz clic en **"Firmar"**.
+
+---
+
+## 3. Emisión de Voto en Vivo
+
+1. Ve a la sección **"Centro de Votación"** (`/dashboard/voting`).
+2. Haz clic en **"Ver Detalle / Votar"** sobre la propuesta deseada.
+3. Selecciona tu voto: **👍 A FAVOR**, **👎 EN CONTRA** o **⚪ ABSTENCIÓN**.
+4. Firma la autorización en MetaMask.
+5. Al completarse, verás el distintivo **"🔒 Voto Definitivo Registrado"**. Recuerda que cada socio solo puede votar 1 sola vez por propuesta.
+
+---
+
+## 4. Ejecución de Propuestas Aprobadas
+
+Una vez que expira la fecha límite y el periodo de retardo, si los votos a favor superan a los en contra, la propuesta podrá ser ejecutada directamente por cualquier socio o automáticamente por el Daemon de la plataforma para realizar el desembolso de los fondos ETH al beneficiario.
