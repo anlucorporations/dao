@@ -39,3 +39,13 @@ Bienvenido a la guía de usuario oficial de la plataforma **DAO con Votación Ga
 ## 4. Ejecución de Propuestas Aprobadas
 
 Una vez que expira la fecha límite y el periodo de retardo, si los votos a favor superan a los en contra, la propuesta podrá ser ejecutada directamente por cualquier socio o automáticamente por el Daemon de la plataforma para realizar el desembolso de los fondos ETH al beneficiario.
+
+---
+
+## 5. Sección de Administración del Sistema (Exclusiva del Owner)
+
+La sección **⚙️ Sistema** (`/dashboard/system`) es un panel de control técnico que se habilita únicamente cuando se conecta la billetera del **Owner / Administrador**:
+- **Billeteras & Relayer**: Supervisión del saldo en ETH de la wallet relayer, nonces y bloqueos anti-replay.
+- **Smart Contracts & Red**: Direcciones del contrato de gobernanza `DAOVoting.sol` y del forwarder `MinimalForwarder.sol`, balance de tesorería y parámetros del nodo RPC.
+- **Buscador de Socios**: Herramienta de inspección criptográfica para consultar el estado de membresía y saldos de cualquier dirección Ethereum (`0x...`).
+- **Diagnóstico & Exportación**: Test de salud del sistema en vivo y exportación del informe técnico en formato JSON.
