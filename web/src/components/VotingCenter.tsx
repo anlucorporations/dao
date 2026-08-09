@@ -16,7 +16,6 @@ export default function VotingCenter() {
   const [proposals, setProposals] = useState<ProposalWithVote[]>([]);
   const [loading, setLoading] = useState(true);
   const [votingProposal, setVotingProposal] = useState<number | null>(null);
-  const [userAddress, setUserAddress] = useState<string | null>(null);
   const [isMember, setIsMember] = useState<boolean>(false);
   const [blockchainTime, setBlockchainTime] = useState<number>(0);
   const [isGasless, setIsGasless] = useState<boolean>(true);
@@ -57,7 +56,6 @@ export default function VotingCenter() {
         const signer = await getSigner();
         if (signer) {
           currentUserAddress = await signer.getAddress();
-          setUserAddress(currentUserAddress);
           memberStatus = await checkIsMember(provider, currentUserAddress);
           setIsMember(memberStatus);
         }

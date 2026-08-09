@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { ethers } from 'ethers';
 
 interface DAOFinancialOverviewProps {
   totalTreasuryBalance: string; // Balance actual de la tesorería en ETH

@@ -51,5 +51,7 @@ export interface ForwardRequest {
   value: bigint;
   gas: bigint;
   nonce: bigint;
+  accion: string;
+  detalles: string;
   data: string;
 }

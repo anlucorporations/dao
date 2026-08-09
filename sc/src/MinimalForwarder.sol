@@ -5,9 +5,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title MinimalForwarder
- * @dev A minimal implementation of EIP-712 meta-transactions forwarder
- * This contract allows users to send transactions without paying gas fees
- * by having a relayer execute the transaction on their behalf
+ * @dev A minimal implementation of EIP-712 meta-transactions forwarder with human-readable parameters for MetaMask signing
  */
 contract MinimalForwarder {
     using ECDSA for bytes32;
@@ -18,11 +16,13 @@ contract MinimalForwarder {
         uint256 value;
         uint256 gas;
         uint256 nonce;
+        string accion;
+        string detalles;
         bytes data;
     }
 
     bytes32 private constant _TYPEHASH = keccak256(
-        "ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data)"
+        "ForwardRequest(address from,address to,uint256 value,uint256 gas,uint256 nonce,string accion,string detalles,bytes data)"
     );
     
     bytes32 private constant _DOMAIN_TYPEHASH = keccak256(
@@ -60,6 +60,8 @@ contract MinimalForwarder {
             req.value,
             req.gas,
             req.nonce,
+            keccak256(bytes(req.accion)),
+            keccak256(bytes(req.detalles)),
             keccak256(req.data)
         ));
 

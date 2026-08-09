@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ethers } from 'ethers';
 import { getProvider, getSigner } from '@/lib/web3';
 import { Proposal } from '@/lib/contracts';
-import { getProposalCount, getProposal, getUserVote, checkIsMember, executeProposalDirect } from '@/lib/daoHelpers';
+import { getProposalCount, getProposal, getUserVote, executeProposalDirect } from '@/lib/daoHelpers';
 import ProposalDetailModal from './ProposalDetailModal';
 
 interface ProposalWithVote extends Proposal {
@@ -20,8 +20,6 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
   const [proposals, setProposals] = useState<ProposalWithVote[]>([]);
   const [loading, setLoading] = useState(true);
   const [executingProposal, setExecutingProposal] = useState<number | null>(null);
-  const [userAddress, setUserAddress] = useState<string | null>(null);
-  const [isMember, setIsMember] = useState<boolean>(false);
   const [blockchainTime, setBlockchainTime] = useState<number>(0);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ProposalWithVote | null>(null);
@@ -54,15 +52,11 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
       const proposalsList: ProposalWithVote[] = [];
 
       let currentUserAddress: string | null = null;
-      let memberStatus = false;
 
       try {
         const signer = await getSigner();
         if (signer) {
           currentUserAddress = await signer.getAddress();
-          setUserAddress(currentUserAddress);
-          memberStatus = await checkIsMember(provider, currentUserAddress);
-          setIsMember(memberStatus);
         }
       } catch {
         // Billetera no conectada

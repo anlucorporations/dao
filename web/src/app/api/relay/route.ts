@@ -6,7 +6,7 @@ const FORWARDER_ADDRESS = process.env.NEXT_PUBLIC_FORWARDER_CONTRACT_ADDRESS || 
 const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:8545';
 
 const FORWARDER_ABI = [
-  'function execute((address from,address to,uint256 value,uint256 gas,uint256 nonce,bytes data) req, bytes signature) payable',
+  'function execute((address from,address to,uint256 value,uint256 gas,uint256 nonce,string accion,string detalles,bytes data) req, bytes signature) payable',
   'function getNonce(address from) view returns (uint256)'
 ];
 

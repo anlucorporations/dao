@@ -194,6 +194,8 @@ contract DAOVotingTest is Test {
             value: 0,
             gas: 2000000,
             nonce: forwarder.getNonce(user),
+            accion: "Crear Propuesta DAO",
+            detalles: "Titulo: Meta Propuesta",
             data: data
         });
 

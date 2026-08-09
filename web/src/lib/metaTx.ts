@@ -7,6 +7,8 @@ const FORWARD_REQUEST_TYPE = [
   { name: 'value', type: 'uint256' },
   { name: 'gas', type: 'uint256' },
   { name: 'nonce', type: 'uint256' },
+  { name: 'accion', type: 'string' },
+  { name: 'detalles', type: 'string' },
   { name: 'data', type: 'bytes' },
 ];
 
@@ -47,6 +49,8 @@ export async function signMetaTxRequest(
     value: request.value.toString(),
     gas: request.gas.toString(),
     nonce: request.nonce.toString(),
+    accion: request.accion,
+    detalles: request.detalles,
     data: request.data,
   });
 
@@ -65,10 +69,22 @@ export async function buildVoteRequest(
 
   const data = iface.encodeFunctionData('vote', [proposalId, voteType]);
 
+  const voteLabelMap: Record<number, string> = {
+    0: '⚪ ABSTENCION',
+    1: '👍 A FAVOR',
+    2: '👎 EN CONTRA'
+  };
+
+  const voteLabel = voteLabelMap[voteType] || 'POSTURA DESCONOCIDA';
+  const accion = '🗳️ Emisión de Voto en Propuesta DAO';
+  const detalles = `Propuesta ID: #${proposalId} | Decisión de Voto: ${voteLabel} | Modalidad: ⚡ Meta-Transacción Sin Gas (Relayer EIP-2771)`;
+
   return {
     to,
     value: BigInt(0),
     gas: BigInt(1000000),
+    accion,
+    detalles,
     data,
   };
 }
@@ -94,10 +110,18 @@ export async function buildCreateProposalRequest(
     description
   ]);
 
+  const durationDays = Math.round(votingDuration / (24 * 60 * 60));
+  const amountETH = ethers.formatEther(amount);
+
+  const accion = '🛡️ Creación de Propuesta de Financiamiento DAO';
+  const detalles = `Título: "${title}" | Beneficiario: ${recipient} | Monto Solicitado: ${amountETH} ETH | Duración Votación: ${durationDays} día(s) | Modalidad: ⚡ Meta-Transacción Sin Gas (Relayer EIP-2771) | Resumen: ${description.slice(0, 70)}...`;
+
   return {
     to,
     value: BigInt(0),
     gas: BigInt(2000000),
+    accion,
+    detalles,
     data,
   };
 }

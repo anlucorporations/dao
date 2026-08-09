@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Proposal, VoteType, getForwarderContract, DAO_CONTRACT_ADDRESS } from '@/lib/contracts';
 import { voteDirect, executeProposalDirect, checkIsMember } from '@/lib/daoHelpers';
@@ -26,6 +25,17 @@ export default function ProposalDetailModal({
   const [isGasless, setIsGasless] = useState<boolean>(true);
   const [loadingAction, setLoadingAction] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Cerrar modal al presionar la tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!proposal) return null;
 
@@ -128,8 +138,14 @@ export default function ProposalDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-3xl glass-card p-8 rounded-3xl border border-purple-500/40 bg-gradient-to-b from-slate-900 via-slate-950 to-purple-950/50 text-slate-100 shadow-2xl space-y-6 my-8">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-fade-in"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl glass-card p-8 rounded-3xl border border-purple-500/40 bg-gradient-to-b from-slate-900 via-slate-950 to-purple-950/50 text-slate-100 shadow-2xl space-y-6 my-8"
+      >
         
         {/* Header bar of modal */}
         <div className="flex items-start justify-between border-b border-slate-800 pb-4">
@@ -147,9 +163,12 @@ export default function ProposalDetailModal({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center font-bold text-base transition-colors"
+            type="button"
+            className="px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md hover:scale-105 active:scale-95"
+            title="Cerrar ventana emergente"
           >
-            ✕
+            <span className="text-sm leading-none">✕</span>
+            <span>Cerrar</span>
           </button>
         </div>
 
@@ -218,122 +237,100 @@ export default function ProposalDetailModal({
           </div>
         </div>
 
-        {/* Breakdown of Voting Results */}
+        {/* Timeline details */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-1">
+            <span className="text-slate-400 font-semibold block">Cierre del Periodo de Votación:</span>
+            <span className="text-white font-bold block">{formatDate(proposal.votingDeadline)}</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-1">
+            <span className="text-slate-400 font-semibold block">Periodo de Retardo para Ejecución:</span>
+            <span className="text-white font-bold block">{formatDate(proposal.executionDelay)}</span>
+          </div>
+        </div>
+
+        {/* Vote Results Progress Bar */}
         <div className="space-y-3 p-5 rounded-2xl bg-slate-950/60 border border-slate-800">
-          <h4 className="font-bold text-xs uppercase tracking-wider text-white">Desglose Detallado de Votación</h4>
-          
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
-              <div className="text-emerald-400 font-extrabold text-base">{Number(proposal.forVotes)}</div>
-              <div className="text-[10px] text-emerald-300 font-bold">A FAVOR ({forPercent.toFixed(0)}%)</div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30">
-              <div className="text-rose-400 font-extrabold text-base">{Number(proposal.againstVotes)}</div>
-              <div className="text-[10px] text-rose-300 font-bold">EN CONTRA ({againstPercent.toFixed(0)}%)</div>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-700">
-              <div className="text-slate-300 font-extrabold text-base">{Number(proposal.abstainVotes)}</div>
-              <div className="text-[10px] text-slate-400 font-bold">ABSTENCIÓN ({abstainPercent.toFixed(0)}%)</div>
-            </div>
+          <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+            <span>Resultados de Votación</span>
+            <span className="text-slate-400">{totalVotes} Voto(s) Registrados</span>
           </div>
 
-          <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex">
-            <div style={{ width: `${forPercent}%` }} className="bg-emerald-500 h-full" />
-            <div style={{ width: `${againstPercent}%` }} className="bg-rose-500 h-full" />
-            <div style={{ width: `${abstainPercent}%` }} className="bg-slate-600 h-full" />
+          <div className="h-3 rounded-full bg-slate-900 overflow-hidden flex border border-slate-800">
+            <div style={{ width: `${forPercent}%` }} className="bg-emerald-500 transition-all duration-500" title={`A Favor: ${forPercent.toFixed(1)}%`} />
+            <div style={{ width: `${againstPercent}%` }} className="bg-rose-500 transition-all duration-500" title={`En Contra: ${againstPercent.toFixed(1)}%`} />
+            <div style={{ width: `${abstainPercent}%` }} className="bg-slate-500 transition-all duration-500" title={`Abstención: ${abstainPercent.toFixed(1)}%`} />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+            <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+              <div className="text-[10px] text-emerald-400 font-bold uppercase">A Favor</div>
+              <div className="font-extrabold text-emerald-300">{Number(proposal.forVotes)} ({forPercent.toFixed(1)}%)</div>
+            </div>
+
+            <div className="p-2 rounded-xl bg-rose-950/40 border border-rose-500/30">
+              <div className="text-[10px] text-rose-400 font-bold uppercase">En Contra</div>
+              <div className="font-extrabold text-rose-300">{Number(proposal.againstVotes)} ({againstPercent.toFixed(1)}%)</div>
+            </div>
+
+            <div className="p-2 rounded-xl bg-slate-900 border border-slate-700">
+              <div className="text-[10px] text-slate-400 font-bold uppercase">Abstención</div>
+              <div className="font-extrabold text-slate-300">{Number(proposal.abstainVotes)} ({abstainPercent.toFixed(1)}%)</div>
+            </div>
           </div>
         </div>
 
-        {/* Timestamps */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-400 bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
-          <div>
-            📅 <span className="font-semibold text-slate-300">Cierre de Votación:</span><br />
-            <span className="text-white text-xs">{formatDate(proposal.votingDeadline)}</span>
-          </div>
-          <div>
-            ⏳ <span className="font-semibold text-slate-300">Fecha Límite de Ejecución:</span><br />
-            <span className="text-white text-xs">{formatDate(proposal.executionDelay)}</span>
-          </div>
-        </div>
+        {/* Voting Actions inside Voting section */}
+        {showVotingActions && isVotingActive && (
+          <div className="p-5 rounded-2xl bg-slate-950/80 border border-purple-500/30 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h4 className="font-extrabold text-sm text-white">Emitir Voto Único en esta Propuesta</h4>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 font-semibold">Modo:</span>
+                <button
+                  type="button"
+                  onClick={() => setIsGasless(!isGasless)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-extrabold transition-all border ${
+                    isGasless
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                      : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                  }`}
+                >
+                  {isGasless ? '⚡ Voto Sin Gas (Relayer)' : '⛽ Voto Directo (Pagando Gas)'}
+                </button>
+              </div>
+            </div>
 
-        {/* Voting Actions inside modal if showVotingActions is TRUE */}
-        {isVotingActive && showVotingActions && (
-          <div className="space-y-3 pt-2">
             {hasVoted ? (
-              <div className="p-3.5 rounded-2xl bg-purple-950/40 border border-purple-500/30 text-xs text-purple-200 flex items-center justify-between">
-                <span>
-                  ✓ Tu voto ya fue registrado:{' '}
-                  <strong className="text-white">
-                    {proposal.userVote === 1 ? 'A FAVOR' : proposal.userVote === 2 ? 'EN CONTRA' : 'ABSTENCIÓN'}
-                  </strong>
-                </span>
-                <span className="text-[10px] text-amber-300 font-bold">🔒 Voto Definitivo (No modificable)</span>
+              <div className="p-3.5 rounded-xl bg-purple-950/50 border border-purple-500/40 text-purple-300 text-xs font-bold text-center flex items-center justify-center gap-2">
+                <span>🔒 Voto Definitivo Registrado (No modificable)</span>
               </div>
             ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300">Emitir Voto:</span>
-                  <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                    <button
-                      onClick={() => setIsGasless(true)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                        isGasless ? 'bg-purple-600 text-white' : 'text-slate-400'
-                      }`}
-                    >
-                      ⚡ Sin Gas
-                    </button>
-                    <button
-                      onClick={() => setIsGasless(false)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
-                        !isGasless ? 'bg-slate-700 text-amber-300' : 'text-slate-400'
-                      }`}
-                    >
-                      ⛽ Con Gas
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={() => handleVote(VoteType.FOR)}
-                    disabled={loadingAction || hasVoted}
-                    className="py-3 px-4 rounded-xl text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    👍 A Favor
-                  </button>
-                  <button
-                    onClick={() => handleVote(VoteType.AGAINST)}
-                    disabled={loadingAction || hasVoted}
-                    className="py-3 px-4 rounded-xl text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    👎 En Contra
-                  </button>
-                  <button
-                    onClick={() => handleVote(VoteType.ABSTAIN)}
-                    disabled={loadingAction || hasVoted}
-                    className="py-3 px-4 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    ⚪ Abstención
-                  </button>
-                </div>
-              </>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => handleVote(VoteType.FOR)}
+                  disabled={loadingAction || hasVoted}
+                  className="py-3 px-4 rounded-xl text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  👍 A Favor
+                </button>
+                <button
+                  onClick={() => handleVote(VoteType.AGAINST)}
+                  disabled={loadingAction || hasVoted}
+                  className="py-3 px-4 rounded-xl text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  👎 En Contra
+                </button>
+                <button
+                  onClick={() => handleVote(VoteType.ABSTAIN)}
+                  disabled={loadingAction || hasVoted}
+                  className="py-3 px-4 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ⚪ Abstención
+                </button>
+              </div>
             )}
-          </div>
-        )}
-
-        {/* If opened from Proposals section, direct user to Voting section to cast vote */}
-        {isVotingActive && !showVotingActions && (
-          <div className="pt-2 text-center">
-            <Link
-              href="/dashboard/voting"
-              onClick={onClose}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-xs text-white bg-gradient-to-r from-purple-600 via-pink-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 shadow-xl shadow-purple-600/30 transition-all"
-            >
-              <span>🗳️ Ir a la Sección Votación para Emitir Voto</span>
-              <span>→</span>
-            </Link>
           </div>
         )}
 
@@ -348,6 +345,17 @@ export default function ProposalDetailModal({
             </button>
           </div>
         )}
+
+        {/* Footer Close Button */}
+        <div className="pt-4 border-t border-slate-800 flex justify-end">
+          <button
+            onClick={onClose}
+            type="button"
+            className="w-full sm:w-auto px-8 py-3 rounded-2xl font-extrabold text-xs text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 shadow-lg transition-all flex items-center justify-center gap-2"
+          >
+            <span>✕ Cerrar Expediente</span>
+          </button>
+        </div>
 
       </div>
     </div>

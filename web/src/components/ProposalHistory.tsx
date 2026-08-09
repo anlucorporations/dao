@@ -313,7 +313,7 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                         <span className="text-xs text-cyan-400 font-normal">🔍</span>
                       </h3>
                       <div className="text-xs text-slate-400 font-mono mt-0.5">
-                        Beneficiario: <span className="text-slate-300">{prop.recipient}</span>
+                        Beneficiario: <span className="text-slate-300">{prop.recipient}</span> • Finalizada: <span className="text-slate-300">{formatDate(prop.votingDeadline)}</span>
                       </div>
                     </div>
                   </div>
@@ -334,9 +334,13 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                       <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse">
                         ⏳ Aprobada Pendiente
                       </span>
-                    ) : (
+                    ) : isRejected ? (
                       <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                         ❌ Rechazada
+                      </span>
+                    ) : (
+                      <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        📋 Cerrada
                       </span>
                     )}
 
