@@ -1,114 +1,44 @@
-# 📋 PLAN DE PRUEBAS MANUALES
-## Fase 5: Pruebas - Cooperativa "Los Cappones"
+# 🧪 Plan de Pruebas Manuales y Casos de Verificación — DAO Gasless
 
-### Objetivo
-Verificar que el sistema funciona correctamente para usuarios reales con poca experiencia técnica.
-
-### Ambiente
-- **URL**: http://localhost:3000 (desarrollo) / https://loscappones.vercel.app (producción)
-- **Red**: Polygon Amoy Testnet
-- **Dispositivos**: Computadora (Chrome, Firefox) + Celular (MetaMask Mobile)
+Este documento guía la ejecución de pruebas de aceptación del usuario para certificar el correcto funcionamiento de la plataforma DAO.
 
 ---
 
-## 🧪 CASOS DE PRUEBA MANUALES
+## Casos de Prueba (Test Scenarios)
 
-### Grupo A: Inscripción y Onboarding (Usuario: Nuevo Socio)
+### CP-01: Conexión de Billetera e Inscripción de Socio (3.0 ETH)
+- **Objetivo**: Verificar que una billetera no inscrita sea redirigida y pueda completar el depósito de 3.0 ETH.
+- **Pasos**:
+  1. Conectar MetaMask con una cuenta sin registro previo en Anvil o Cloud Run.
+  2. Confirmar que la app muestre la opción **"🛡️ Inscribirse como Socio (3.0 ETH)"**.
+  3. Confirmar la transacción en MetaMask.
+- **Resultado Esperado**: La transacción concluye con éxito, la cuenta recibe la certificación de socio y accede al Dashboard.
 
-| ID | Caso | Pasos | Resultado Esperado | Estado |
-|----|------|-------|-------------------|--------|
-| M1 | Instalar MetaMask por primera vez | 1. Entrar a la web<br>2. Click "¿Necesitas ayuda?"<br>3. Seguir tutorial paso a paso | Tutorial claro, sin palabras técnicas | ⬜ |
-| M2 | Conectar wallet sin ser socio | 1. Instalar MetaMask<br>2. Crear wallet<br>3. Conectar a la plataforma | Mensaje: "Aún no eres socio. Solicita inscripción al Contralor." | ⬜ |
-| M3 | Recibir invitación del Contralor | 1. Contralor carga datos<br>2. Recibir enlace por correo/WhatsApp<br>3. Click en enlace | Página de pago con monto exacto (2% del capital) | ⬜ |
-| M4 | Pagar inscripción del 2% | 1. Revisar monto mostrado<br>2. Confirmar en MetaMask<br>3. Esperar confirmación | Mensaje: "¡Bienvenido socio! Tu wallet está vinculada." | ⬜ |
-| M5 | Ver dashboard por primera vez | 1. Login con wallet<br>2. Explorar interfaz | Tarjetas grandes, colores claros, letra legible | ⬜ |
+### CP-02: Creación de Propuesta con Firma Legible EIP-712
+- **Objetivo**: Verificar que la ventana de firma de MetaMask despliegue los detalles del proyecto en texto claro.
+- **Pasos**:
+  1. Ir a `/dashboard/proposals/create` e ingresar Título, Beneficiario, Monto ETH y Descripción.
+  2. Seleccionar la opción **⚡ Sin Gas (Meta-Transacción Relayer)** y presionar **Crear Propuesta**.
+- **Resultado Esperado**: MetaMask muestra la solicitud EIP-712 con los campos `Acción: 🛡️ Creación de Propuesta DAO` y la descripción legible del proyecto.
 
-### Grupo B: Votación (Usuario: Socio Activo)
+### CP-03: Votación Gasless y Regla de Voto Único Inmutable
+- **Objetivo**: Probar la emisión de voto sin pagar gas y la restricción contra votos duplicados.
+- **Pasos**:
+  1. En `/dashboard/voting`, seleccionar una propuesta activa y presionar **👍 A FAVOR**.
+  2. Confirmar la firma EIP-712 en MetaMask (sin cobro de gas).
+  3. Tras la confirmación, intentar emitir un segundo voto en la misma propuesta.
+- **Resultado Esperado**: El primer voto queda registrado con éxito. Al intentar votar nuevamente, la app bloquea la acción indicando `🔒 Voto Definitivo Registrado` y el contrato revierte cualquier intento de duplicación.
 
-| ID | Caso | Pasos | Resultado Esperado | Estado |
-|----|------|-------|-------------------|--------|
-| M6 | Ver propuestas disponibles | 1. Entrar al dashboard<br>2. Scroll de propuestas | Solo se ven propuestas "Por Discutir" y disponibles | ⬜ |
-| M7 | Votar A FAVOR sin pagar gas | 1. Click "A FAVOR"<br>2. MetaMask muestra "Firmar mensaje"<br>3. Confirmar | "Voto registrado" en segundos. NO se pidió dinero. | ⬜ |
-| M8 | Votar EN CONTRA | 1. Click "EN CONTRA"<br>2. Firmar mensaje | Voto registrado, contador actualizado | ⬜ |
-| M9 | Intentar votar dos veces | 1. Votar una vez<br>2. Intentar votar de nuevo | Botón deshabilitado, mensaje "Ya votaste" | ⬜ |
-| M10 | Verificar secreto del voto | 1. Votar<br>2. Revisar si se ve quién votó | NO se ve quién votó, solo totales | ⬜ |
-| M11 | Votar desde celular | 1. Abrir en Chrome móvil<br>2. Conectar con WalletConnect | Misma experiencia que en desktop | ⬜ |
+### CP-04: Cierre del Modal Flotante de Expediente
+- **Objetivo**: Verificar la usabilidad del modal de detalle de propuesta.
+- **Pasos**:
+  1. Abrir cualquier propuesta haciendo clic en **Ver Detalle**.
+  2. Presionar el botón `✕ Cerrar` en la cabecera, o el botón `✕ Cerrar Expediente` en el pie, o la tecla `Escape`, o pulsar fuera del panel.
+- **Resultado Esperado**: El modal se cierra suavemente regresando a la vista principal sin alterar el estado.
 
-### Grupo C: Panel Directivo (Usuario: Presidente/Contralor/Contador)
-
-| ID | Caso | Pasos | Resultado Esperado | Estado |
-|----|------|-------|-------------------|--------|
-| M12 | Crear propuesta de inversión | 1. Click "Crear Propuesta"<br>2. Llenar formulario<br>3. Ingresar código 2FA | Propuesta creada, estado "Borrador" | ⬜ |
-| M13 | Firmar aval con 2FA | 1. Ver propuestas pendientes<br>2. Click "Firmar Aval"<br>3. Ingresar código 2FA | Aval firmado, contador +1 | ⬜ |
-| M14 | Publicación automática con 3 avales | 1. Firmar 3 avales<br>2. Esperar | Propuesta pasa a "Por Discutir" automáticamente | ⬜ |
-| M15 | Cambiar disponibilidad | 1. Click en toggle<br>2. Confirmar | Propuesta desaparece/aparece del listado público | ⬜ |
-| M16 | Ejecutar propuesta aprobada | 1. Esperar cierre de votación<br>2. Click "Ejecutar"<br>3. Confirmar 2FA | Fondos transferidos, estado "Ejecutada" | ⬜ |
-
-### Grupo D: Seguridad y Recuperación
-
-| ID | Caso | Pasos | Resultado Esperado | Estado |
-|----|------|-------|-------------------|--------|
-| M17 | 2FA incorrecto bloquea acción | 1. Intentar crear propuesta<br>2. Ingresar código erróneo | "Código 2FA inválido", acción bloqueada | ⬜ |
-| M18 | Relayer sin fondos (Plan B) | 1. Simular relayer vacío<br>2. Intentar votar | Alerta a junta directiva, opción de votar con gas propio | ⬜ |
-| M19 | Recuperar wallet perdida | 1. Click "¿Olvidaste tu wallet?"<br>2. Responder preguntas<br>3. Esperar aprobación 3/5 | Nueva wallet vinculada tras aprobación | ⬜ |
-| M20 | Ver acta de votación | 1. Ir a propuesta cerrada<br>2. Click "Ver Acta"<br>3. Descargar PDF | PDF con datos correctos, hash verificable | ⬜ |
-
-### Grupo E: Reportes Financieros
-
-| ID | Caso | Pasos | Resultado Esperado | Estado |
-|----|------|-------|-------------------|--------|
-| M21 | Ver balance general | 1. Click "Reportes"<br>2. "Balance General" | Capital total, número de socios, propuestas aprobadas | ⬜ |
-| M22 | Ver movimientos de fondos | 1. Click "Movimientos" | Lista cronológica de entradas y salidas | ⬜ |
-| M23 | Ver listado de socios | 1. Click "Socios" | Nombre, wallet, capital aportado, cargo (si aplica) | ⬜ |
-
----
-
-## 👥 PERFILES DE USUARIOS DE PRUEBA
-
-| Perfil | Edad | Experiencia Tecnológica | Dispositivo |
-|--------|------|------------------------|-------------|
-| Abuelo Carlos | 65 | Nunca usó computadora | Celular (hijo le instaló MetaMask) |
-| Tía María | 50 | Usa WhatsApp y Facebook | Celular |
-| Primo Juan | 35 | Usa banca online | Computadora + Celular |
-| Sobrina Ana | 25 | Nativa digital | Celular |
-| Tío Pedro | 55 | Usa Excel para contabilidad | Computadora |
-
----
-
-## 📊 CRITERIOS DE ACEPTACIÓN
-
-- ✅ 100% de los casos críticos (M6-M10, M12-M16) deben pasar
-- ✅ 0 errores de seguridad (M17-M20)
-- ✅ Usuarios de 60+ años completan flujo sin ayuda en < 5 minutos
-- ✅ Tiempo de carga de página < 3 segundos
-- ✅ Votación gasless se completa en < 10 segundos
-
----
-
-## 📝 FORMATO DE REPORTE DE BUG
-
-```
-ID: BUG-XXX
-Fecha: DD/MM/AAAA
-Reportado por: [Nombre]
-Dispositivo: [Celular/PC]
-Navegador: [Chrome/Firefox/Safari]
-Red: [Amoy/Mainnet]
-
-Descripción:
-[Qué pasó]
-
-Pasos para reproducir:
-1. [Paso 1]
-2. [Paso 2]
-3. [Paso 3]
-
-Resultado esperado:
-[Qué debería pasar]
-
-Resultado actual:
-[Qué pasó en realidad]
-
-Screenshot: [Adjuntar]
-Hash de tx (si aplica): 0x...
-```
+### CP-05: Ejecución y Desembolso Automático de Fondos
+- **Objetivo**: Certificar la transferencia de ETH al beneficiario al finalizar la votación.
+- **Pasos**:
+  1. Esperar la conclusión del periodo de votación de una propuesta ganadora.
+  2. Presionar **🚀 Ejecutar Propuesta** o permitir que el Daemon `/api/daemon` la procese.
+- **Resultado Esperado**: El balance del beneficiario incrementa en el monto exacto en ETH y la propuesta pasa al estado `🚀 Ejecutada & Desembolsada`.

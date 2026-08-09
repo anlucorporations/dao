@@ -1,94 +1,38 @@
-# 📕 MANUAL DEL PRESIDENTE
-## Creación y Ejecución de Propuestas
+# 📕 Manual del Socio Proponente — Creación y Ejecución de Propuestas DAO
+
+Este manual orienta a los socios certificados de la DAO en la **creación de propuestas de financiamiento** y la **ejecución de resoluciones aprobadas**.
 
 ---
 
-## 🎯 Tu función
+## 🎯 Rol y Capabilidades
 
-Como **Presidente**, tú puedes:
-- Crear propuestas de inversión y administrativas
-- Ejecutar propuestas aprobadas (transferir fondos)
-- Firmar avales para publicar propuestas
-- Cambiar disponibilidad de propuestas
-
----
-
-## 📝 Paso 1: Crear una propuesta
-
-1. Entra a la plataforma con tu wallet
-2. Ve al panel **"Crear Propuesta"**
-3. Llena el formulario:
-   - **Nombre**: Título corto (ej: "Compra de equipos de oficina")
-   - **Descripción**: Explicación detallada
-   - **Monto**: Cantidad en MATIC/ETH (ej: 1000)
-   - **Wallet receptora**: Dirección que recibirá el dinero
-   - **Tipo**: Inversión (24h votación) o Administrativa (12h votación)
-4. Ingresa tu **código 2FA** (de Google Authenticator)
-5. Click en **"Crear"**
-
-> ⚠️ **Importante:** Una vez creada, **NO se puede editar**. Revisa bien antes de crear.
+En la arquitectura descentralizada de la DAO, todo **Socio Certificado (con 3.0 ETH inscritos)** puede:
+- Crear propuestas de inversión o financiamiento para la comunidad.
+- Seleccionar entre modalidad **⚡ Sin Gas (Meta-Transacción EIP-2771)** o **⛽ Directa (Pagando Gas)**.
+- Firmar la creación utilizando la ventana de MetaMask con **información transparente en texto claro** (`accion` y `detalles`).
+- Ejecutar propuestas aprobadas cuyos periodos de votación y retardo de ejecución hayan concluido exitosamente.
 
 ---
 
-## ✍️ Paso 2: Firmar aval
+## 📝 Paso 1: Crear una Propuesta de Financiamiento
 
-Cuando otro directivo crea una propuesta:
-1. Verás una **notificación** en tu panel
-2. Lee la propuesta cuidadosamente
-3. Si estás de acuerdo en que se publique:
-   - Click en **"Firmar Aval"**
-   - Ingresa tu **código 2FA**
-   - Click en **"Confirmar"**
-
-> **Recuerda:** Se necesitan **3 de 5** avales para publicar una propuesta.
-
----
-
-## 💰 Paso 3: Ejecutar propuesta aprobada
-
-1. Cuando una propuesta de **inversión** gana la votación:
-   - Estado cambia a **"Aprobada"**
-   - Verás el botón **"Ejecutar"**
-2. Click en **"Ejecutar"**
-3. Ingresa tu **código 2FA**
-4. El sistema transfiere automáticamente los fondos a la wallet receptora
-5. Se genera el **acta digital** automáticamente
+1. Conecta tu billetera MetaMask verificada en la plataforma.
+2. Navega a la pestaña **"Crear Propuesta"** (`/dashboard/proposals/create`).
+3. Ingresa los datos del formulario:
+   - **Título**: Nombre descriptivo del proyecto.
+   - **Beneficiario**: Dirección pública Ethereum (`0x...`) que recibirá el financiamiento.
+   - **Monto**: Cantidad exacta de Ether (ETH) solicitada.
+   - **Duración de Votación**: Tiempo en días durante el cual los socios podrán votar.
+   - **Justificación**: Exposición detallada de los motivos y alcance del proyecto.
+4. Selecciona la modalidad de envío: **⚡ Sin Gas (Relayer)** o **⛽ Directo**.
+5. Haz clic en **"Crear Propuesta"**.
+6. En MetaMask, verifica que la ventana de firma EIP-712 despliegue los detalles claros (`Acción: 🛡️ Creación de Propuesta DAO`) y presiona **"Firmar"**.
 
 ---
 
-## 🎛️ Cambiar disponibilidad
+## 🚀 Paso 2: Ejecutar una Propuesta Aprobada
 
-Si necesitas **ocultar** una propuesta temporalmente:
-1. Ve a **"Gestionar Propuestas"**
-2. Busca la propuesta
-3. Click en el **toggle** (interruptor)
-4. La propuesta desaparece del listado público
-
-Para volver a mostrarla, repite el proceso.
-
----
-
-## 📊 Reportes disponibles
-
-En tu panel puedes ver:
-- **Balance general** de la cooperativa
-- **Movimientos** de entrada y salida
-- **Listado de socios** con su capital
-- **Histórico de propuestas**
-
----
-
-## ⚠️ Reglas importantes
-
-- **NUNCA** ejecutes una propuesta sin verificar que fue aprobada por mayoría
-- **NUNCA** cambies disponibilidad sin justificación
-- **SIEMPRE** usa 2FA para acciones críticas
-- **CONSULTA** con la junta directiva antes de decisiones importantes
-
----
-
-## 📞 Contactos
-
-- **Problemas técnicos:** Contador
-- **Carga de socios:** Contralor
-- **Apelaciones:** Vicepresidente
+1. Cuando finaliza el plazo de votación y el periodo de retardo de seguridad:
+   - Si los votos **A FAVOR** superan a los votos **EN CONTRA**, la propuesta adquiere el estado **"⏳ Aprobada (Lista p/ Ejecutar)"**.
+2. Cualquier socio o el **Daemon de Ejecución** puede hacer clic en **"🚀 Ejecutar Propuesta"**.
+3. El contrato `DAOVoting.sol` verifica las condiciones on-chain y transfiere automáticamente los fondos de la tesorería a la billetera del beneficiario.
