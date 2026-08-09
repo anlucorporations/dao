@@ -63,9 +63,10 @@ export default function TreasuryPage() {
           if (currentAddr) {
             try {
               const walletWei = await provider.getBalance(currentAddr);
-              setWalletBalanceETH(ethers.formatEther(walletWei));
+              const walletEthNum = parseFloat(ethers.formatEther(walletWei));
+              setWalletBalanceETH(walletEthNum.toFixed(4));
             } catch {
-              setWalletBalanceETH('0');
+              setWalletBalanceETH('0.0000');
             }
 
             const memberStatus = await checkIsMember(provider, currentAddr);
@@ -76,7 +77,7 @@ export default function TreasuryPage() {
           } else {
             setIsMember(false);
             setUserBalanceETH('0');
-            setWalletBalanceETH('0');
+            setWalletBalanceETH('0.0000');
           }
 
           // 5. Conteo de propuestas y cálculo de egresos ejecutados

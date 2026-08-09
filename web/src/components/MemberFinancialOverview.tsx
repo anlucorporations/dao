@@ -31,6 +31,8 @@ export default function MemberFinancialOverview({
 
   const userBalanceNum = parseFloat(userBalanceETH) || 0;
   const totalBalanceNum = parseFloat(totalDAOBalanceETH) || 0;
+  const walletBalanceNum = parseFloat(walletBalanceETH) || 0;
+  const formattedWalletBalance = walletBalanceNum.toFixed(4);
   const participationPercentage = totalBalanceNum > 0 ? ((userBalanceNum / totalBalanceNum) * 100).toFixed(2) : '0.00';
 
   const handleRegister = async () => {
@@ -126,7 +128,7 @@ export default function MemberFinancialOverview({
             {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'No Conectada'}
           </span>
           <span className="text-xs font-bold text-cyan-300 font-mono block">
-            Saldo: {walletBalanceETH} ETH
+            Saldo: {formattedWalletBalance} ETH
           </span>
         </div>
       </div>
@@ -152,7 +154,7 @@ export default function MemberFinancialOverview({
         <div className="p-5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 space-y-1 shadow-lg shadow-cyan-500/5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Saldo Billetera (MetaMask)</span>
           <div className="text-2xl font-extrabold text-cyan-300">
-            {loading ? '...' : `${walletBalanceETH} ETH`}
+            {loading ? '...' : `${formattedWalletBalance} ETH`}
           </div>
           <p className="text-[10px] text-slate-500 font-medium">Balance disponible en la wallet</p>
         </div>
