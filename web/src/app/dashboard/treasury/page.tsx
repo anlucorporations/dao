@@ -19,6 +19,7 @@ export default function TreasuryPage() {
   const [account, setAccount] = useState<string | null>(null);
   const [isMember, setIsMember] = useState<boolean>(false);
   const [userBalanceETH, setUserBalanceETH] = useState<string>('0');
+  const [walletBalanceETH, setWalletBalanceETH] = useState<string>('0');
   const [totalTreasuryBalance, setTotalTreasuryBalance] = useState<string>('0');
   const [totalIngresos, setTotalIngresos] = useState<string>('0');
   const [totalEgresos, setTotalEgresos] = useState<string>('0');
@@ -58,8 +59,15 @@ export default function TreasuryPage() {
           const minIngresos = BigInt(memberNum) * ethers.parseEther('3');
           setTotalIngresos(ethers.formatEther(minIngresos));
 
-          // 4. Datos del socio conectado
+          // 4. Datos del socio conectado y saldo de su wallet
           if (currentAddr) {
+            try {
+              const walletWei = await provider.getBalance(currentAddr);
+              setWalletBalanceETH(ethers.formatEther(walletWei));
+            } catch {
+              setWalletBalanceETH('0');
+            }
+
             const memberStatus = await checkIsMember(provider, currentAddr);
             setIsMember(memberStatus);
 
@@ -68,6 +76,7 @@ export default function TreasuryPage() {
           } else {
             setIsMember(false);
             setUserBalanceETH('0');
+            setWalletBalanceETH('0');
           }
 
           // 5. Conteo de propuestas y cálculo de egresos ejecutados
@@ -141,6 +150,7 @@ export default function TreasuryPage() {
             account={account}
             isMember={isMember}
             userBalanceETH={userBalanceETH}
+            walletBalanceETH={walletBalanceETH}
             totalDAOBalanceETH={totalTreasuryBalance}
             onBalanceUpdated={handleBalanceUpdated}
             loading={loading}

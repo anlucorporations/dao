@@ -9,6 +9,7 @@ interface MemberFinancialOverviewProps {
   account: string | null;
   isMember: boolean;
   userBalanceETH: string;
+  walletBalanceETH?: string;
   totalDAOBalanceETH: string;
   onBalanceUpdated?: () => void;
   loading?: boolean;
@@ -18,6 +19,7 @@ export default function MemberFinancialOverview({
   account,
   isMember,
   userBalanceETH,
+  walletBalanceETH = '0',
   totalDAOBalanceETH,
   onBalanceUpdated,
   loading = false
@@ -104,7 +106,7 @@ export default function MemberFinancialOverview({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300">
-              💳 Finanzas del Socio Conectado
+              💳 Finanzas de la Billetera Conectada
             </h2>
             {/* Sello de Usuario Inscrito y Certificado */}
             {isMember && (
@@ -114,14 +116,17 @@ export default function MemberFinancialOverview({
             )}
           </div>
           <p className="text-slate-400 text-xs mt-1">
-            Resumen de aportes individuales, ponderación relativa e inscripción.
+            Resumen del saldo líquido de tu billetera y de tus aportes depositados en la DAO.
           </p>
         </div>
 
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Billetera Conectada</span>
-          <span className="font-mono text-xs text-white font-bold">
+          <span className="font-mono text-xs text-white font-bold block">
             {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : 'No Conectada'}
+          </span>
+          <span className="text-xs font-bold text-cyan-300 font-mono block">
+            Saldo: {walletBalanceETH} ETH
           </span>
         </div>
       </div>
@@ -141,24 +146,36 @@ export default function MemberFinancialOverview({
         </div>
       )}
 
-      {/* Member Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Total ETH Aportado</span>
+      {/* Member Metric Cards (4 Cards Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Saldo Líquido de la Billetera Conectada */}
+        <div className="p-5 rounded-2xl bg-slate-950/80 border border-cyan-500/30 space-y-1 shadow-lg shadow-cyan-500/5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Saldo Billetera (MetaMask)</span>
+          <div className="text-2xl font-extrabold text-cyan-300">
+            {loading ? '...' : `${walletBalanceETH} ETH`}
+          </div>
+          <p className="text-[10px] text-slate-500 font-medium">Balance disponible en la wallet</p>
+        </div>
+
+        {/* Card 2: Fondo Depositado en la DAO */}
+        <div className="p-5 rounded-2xl bg-slate-950/80 border border-purple-500/30 space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Total ETH Aportado en DAO</span>
           <div className="text-2xl font-extrabold text-white">
             {loading ? '...' : `${userBalanceETH} ETH`}
           </div>
-          <p className="text-[10px] text-slate-500 font-medium">Fondo personal depositado</p>
+          <p className="text-[10px] text-slate-500 font-medium">Fondo personal custodiado por DAO</p>
         </div>
 
+        {/* Card 3: Porcentaje de Ponderación */}
         <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Porcentaje de Ponderación</span>
-          <div className="text-2xl font-extrabold text-cyan-300">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-pink-400">Porcentaje de Ponderación</span>
+          <div className="text-2xl font-extrabold text-pink-300">
             {loading ? '...' : `${participationPercentage}%`}
           </div>
-          <p className="text-[10px] text-slate-500 font-medium">Participación sobre la tesorería</p>
+          <p className="text-[10px] text-slate-500 font-medium">Participación relativa en tesorería</p>
         </div>
 
+        {/* Card 4: Estado de Membresía */}
         <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Estado de Membresía</span>
           <div className="text-sm font-extrabold text-white mt-1">
