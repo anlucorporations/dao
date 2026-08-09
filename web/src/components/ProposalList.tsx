@@ -76,17 +76,7 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
         }
 
         proposalsList.push({
-          id: BigInt(p[0]),
-          title: p[1],
-          recipient: p[2],
-          amount: BigInt(p[3]),
-          votingDeadline: BigInt(p[4]),
-          executionDelay: BigInt(p[5]),
-          executed: p[6],
-          forVotes: BigInt(p[7]),
-          againstVotes: BigInt(p[8]),
-          abstainVotes: BigInt(p[9]),
-          description: p[10],
+          ...p,
           userVote
         });
       }
@@ -122,23 +112,37 @@ export default function ProposalList({ onSelectProposal }: ProposalListProps) {
   const getProposalStatus = (p: Proposal) => {
     const now = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
     if (p.executed) return { label: 'Ejecutada', color: 'bg-slate-700 text-slate-300 border-slate-600' };
-    if (now < Number(p.votingDeadline)) return { label: 'En Votación', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse' };
-    if (p.forVotes > p.againstVotes) return { label: 'Aprobada', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' };
+    if (p.rejected) return { label: 'Rechazada', color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+
+    const isAbstentionMajority = p.abstainVotes > p.forVotes && p.abstainVotes > p.againstVotes;
+    const isVotingTimeFinished = now >= Number(p.votingDeadline);
+
+    if (isVotingTimeFinished && isAbstentionMajority && !p.secondPeriod) {
+      return { label: 'Requiere 2º Periodo', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse' };
+    }
+    if (p.secondPeriod && !isVotingTimeFinished) {
+      return { label: '2º Periodo Activo', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 animate-pulse' };
+    }
+    if (!isVotingTimeFinished) return { label: 'En Votación', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse' };
+    if (p.forVotes > p.againstVotes && !isAbstentionMajority) return { label: 'Aprobada', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' };
     return { label: 'Rechazada', color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
   };
 
   const canVoteOnProposal = (p: Proposal) => {
     const now = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
-    return now < Number(p.votingDeadline) && !p.executed;
+    return !p.executed && !p.rejected && now < Number(p.votingDeadline);
   };
 
   const canExecuteProposalCheck = (p: Proposal) => {
     const now = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
+    const isAbstentionMajority = p.abstainVotes > p.forVotes && p.abstainVotes > p.againstVotes;
     return (
       !p.executed &&
+      !p.rejected &&
       now >= Number(p.votingDeadline) &&
       now >= Number(p.executionDelay) &&
-      p.forVotes > p.againstVotes
+      p.forVotes > p.againstVotes &&
+      !isAbstentionMajority
     );
   };
 

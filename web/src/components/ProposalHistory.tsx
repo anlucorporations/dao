@@ -64,10 +64,11 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
 
       for (let i = 1; i <= Number(count); i++) {
         const p = await getProposal(provider, i);
-        const deadline = Number(p[4]);
-        const executed = p[6];
+        const deadline = Number(p.votingDeadline);
+        const executed = p.executed;
+        const rejected = p.rejected;
 
-        if (executed || now >= deadline) {
+        if (executed || rejected || now >= deadline) {
           let userVote: number | undefined = undefined;
           if (currentUserAddress) {
             try {
@@ -79,17 +80,7 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
           }
 
           historyList.push({
-            id: BigInt(p[0]),
-            title: p[1],
-            recipient: p[2],
-            amount: BigInt(p[3]),
-            votingDeadline: BigInt(p[4]),
-            executionDelay: BigInt(p[5]),
-            executed: p[6],
-            forVotes: BigInt(p[7]),
-            againstVotes: BigInt(p[8]),
-            abstainVotes: BigInt(p[9]),
-            description: p[10],
+            ...p,
             userVote
           });
         }

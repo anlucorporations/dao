@@ -23,34 +23,22 @@ La plataforma está estructurada en 4 capas de arquitectura desacopladas:
 
 ---
 
-## 2. Detalles de Smart Contracts
+## 2. Reglas de Gobernanza en Smart Contracts (DAOVoting.sol)
 
-### MinimalForwarder.sol
-```solidity
-struct ForwardRequest {
-    address from;
-    address to;
-    uint256 value;
-    uint256 gas;
-    uint256 nonce;
-    string accion;
-    string detalles;
-    bytes data;
-}
-```
-- **Firma EIP-712**: Calcula el `structHash` utilizando Keccak-256 e incluye campos de texto legible para MetaMask.
-- **Validación Nonces**: Control anti-replay individual (`mapping(address => uint256)`).
-
-### DAOVoting.sol
 - **Membresía**: Requiere `registerMember{value: 3 ether}()`.
-- **Voto Único**: Inmutabilidad garantizada por `require(!hasVoted[proposalId][sender])`.
-- **Sender Contextual**: Utiliza `_msgSender()` provisto por `ERC2771Context` para extraer la dirección del socio original en meta-transacciones.
+- **Cierre Anticipado o por Plazo**: La votación finaliza al cumplirse el plazo `votingDeadline` **O** de forma anticipada cuando el **100% de los socios registrados** (`memberCount`) han emitido su voto (`forVotes + againstVotes + abstainVotes >= memberCount`).
+- **Aprobación por Mayoría Simple**: La propuesta se aprueba si los votos A Favor superan a los votos En Contra (`forVotes > againstVotes`) y no ganó la abstención.
+- **Repechaje por Mayoría de Abstención**:
+  - Si la abstención es la opción con mayor número de votos (`abstainVotes > forVotes && abstainVotes > againstVotes`):
+    - **1er Periodo**: Se habilita la activación de un **segundo periodo de votación (repechaje)** por un plazo adicional.
+    - **2º Periodo**: Si en la segunda votación la abstención vuelve a ganar por mayoría, la propuesta queda definitivamente **RECHAZADA** (`rejected = true`).
+- **Sender Contextual**: Utiliza `_msgSender()` provisto por `ERC2771Context` para extraer la dirección del socio original en meta-transacciones EIP-712.
 
 ---
 
 ## 3. Pruebas Automatizadas (Foundry Test Suite)
 
-La suite de pruebas contiene **10 pruebas unitarias e integración** pasadas con 100% de éxito:
+La suite de pruebas contiene **12 pruebas unitarias e integración** pasadas con 100% de éxito:
 ```bash
 forge test
 ```
@@ -60,6 +48,9 @@ Resultados:
 - `testCreateProposalSuccess()` (PASS)
 - `testVoteFor()` (PASS)
 - `testVoteFailsIfAlreadyVoted()` (PASS)
+- `testVotingFinishesWhenAllMembersVote()` (PASS)
+- `testSecondVotingPeriodOnAbstentionMajority()` (PASS)
+- `testProposalRejectedIfAbstentionWinsSecondPeriod()` (PASS)
 - `testMetaTransactionCreateProposal()` (PASS)
 - `testExecuteApprovedProposal()` (PASS)
 

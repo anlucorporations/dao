@@ -43,6 +43,8 @@ export interface Proposal {
   againstVotes: bigint;
   abstainVotes: bigint;
   description: string;
+  secondPeriod?: boolean;
+  rejected?: boolean;
 }
 
 export interface ForwardRequest {

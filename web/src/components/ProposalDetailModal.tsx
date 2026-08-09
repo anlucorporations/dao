@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Proposal, VoteType, getForwarderContract, DAO_CONTRACT_ADDRESS } from '@/lib/contracts';
-import { voteDirect, executeProposalDirect, checkIsMember } from '@/lib/daoHelpers';
+import { voteDirect, executeProposalDirect, enableSecondPeriodDirect, checkIsMember } from '@/lib/daoHelpers';
 import { buildVoteRequest, signMetaTxRequest } from '@/lib/metaTx';
 import { getSigner } from '@/lib/web3';
 
@@ -40,11 +40,16 @@ export default function ProposalDetailModal({
   if (!proposal) return null;
 
   const now = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
-  const isVotingActive = now < Number(proposal.votingDeadline) && !proposal.executed;
-  const canExecute = !proposal.executed && now >= Number(proposal.votingDeadline) && now >= Number(proposal.executionDelay) && proposal.forVotes > proposal.againstVotes;
+  const totalVotes = Number(proposal.forVotes + proposal.againstVotes + proposal.abstainVotes);
+  const isAbstentionMajority = proposal.abstainVotes > proposal.forVotes && proposal.abstainVotes > proposal.againstVotes;
+  const isVotingTimeFinished = now >= Number(proposal.votingDeadline);
+  const isVotingActive = !proposal.executed && !proposal.rejected && !isVotingTimeFinished;
+
+  const canExecute = !proposal.executed && !proposal.rejected && isVotingTimeFinished && now >= Number(proposal.executionDelay) && proposal.forVotes > proposal.againstVotes && !isAbstentionMajority;
+  const canStartSecondPeriod = isVotingTimeFinished && isAbstentionMajority && !proposal.secondPeriod && !proposal.executed && !proposal.rejected;
+
   const hasVoted = proposal.userVote !== undefined && proposal.userVote !== 0;
 
-  const totalVotes = Number(proposal.forVotes + proposal.againstVotes + proposal.abstainVotes);
   const forPercent = totalVotes > 0 ? (Number(proposal.forVotes) / totalVotes) * 100 : 0;
   const againstPercent = totalVotes > 0 ? (Number(proposal.againstVotes) / totalVotes) * 100 : 0;
   const abstainPercent = totalVotes > 0 ? (Number(proposal.abstainVotes) / totalVotes) * 100 : 0;
@@ -60,7 +65,6 @@ export default function ProposalDetailModal({
   };
 
   const handleVote = async (voteType: VoteType) => {
-    if (hasVoted) return;
     setLoadingAction(true);
     setNotification(null);
 
@@ -89,6 +93,8 @@ export default function ProposalDetailModal({
               value: request.value.toString(),
               gas: request.gas.toString(),
               nonce: request.nonce.toString(),
+              accion: request.accion,
+              detalles: request.detalles,
               data: request.data
             },
             signature
@@ -131,6 +137,26 @@ export default function ProposalDetailModal({
     } catch (err: unknown) {
       console.error('Error al ejecutar:', err);
       const msg = err instanceof Error ? err.message : 'Error al ejecutar propuesta.';
+      setNotification({ type: 'error', message: msg });
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const handleStartSecondPeriod = async () => {
+    setLoadingAction(true);
+    setNotification(null);
+
+    try {
+      const signer = await getSigner();
+      if (!signer) throw new Error('Conecta tu billetera para activar el 2º periodo de votación.');
+
+      await enableSecondPeriodDirect(signer, Number(proposal.id), 3 * 24 * 60 * 60);
+      setNotification({ type: 'success', message: '🔄 ¡Segundo periodo de votación (repechaje) activado exitosamente por 3 días!' });
+      if (onRefresh) onRefresh();
+    } catch (err: unknown) {
+      console.error('Error al activar 2º periodo:', err);
+      const msg = err instanceof Error ? err.message : 'Error al activar 2º periodo de votación.';
       setNotification({ type: 'error', message: msg });
     } finally {
       setLoadingAction(false);
@@ -203,8 +229,14 @@ export default function ProposalDetailModal({
             <div className="text-sm font-extrabold text-white mt-1">
               {proposal.executed ? (
                 <span className="text-emerald-400">🚀 Ejecutada & Desembolsada</span>
+              ) : proposal.rejected ? (
+                <span className="text-rose-400">❌ Rechazada Definitivamente</span>
+              ) : canStartSecondPeriod ? (
+                <span className="text-amber-400 animate-pulse">⚠️ Requiere 2º Periodo (Abstención)</span>
+              ) : proposal.secondPeriod && isVotingActive ? (
+                <span className="text-cyan-300 animate-pulse">🔄 2º Periodo Activo (Repechaje)</span>
               ) : isVotingActive ? (
-                <span className="text-emerald-300 animate-pulse">🗳️ Votación Activa</span>
+                <span className="text-emerald-300 animate-pulse">🗳️ Votación Activa (1er Periodo)</span>
               ) : canExecute ? (
                 <span className="text-cyan-300">⏳ Aprobada (Lista p/ Ejecutar)</span>
               ) : (
@@ -253,7 +285,7 @@ export default function ProposalDetailModal({
         {/* Vote Results Progress Bar */}
         <div className="space-y-3 p-5 rounded-2xl bg-slate-950/60 border border-slate-800">
           <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-            <span>Resultados de Votación</span>
+            <span>Resultados de Votación por Mayoría Simple</span>
             <span className="text-slate-400">{totalVotes} Voto(s) Registrados</span>
           </div>
 
@@ -281,11 +313,29 @@ export default function ProposalDetailModal({
           </div>
         </div>
 
+        {/* Start Second Period Button */}
+        {canStartSecondPeriod && (
+          <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/40 space-y-3">
+            <div className="text-xs text-amber-200 font-medium">
+              ⚠️ La votación finalizó en el primer periodo con **mayoría de abstención**. Se habilita la opción de incorporar un **segundo periodo de votación (repechaje)**. Si en el segundo periodo la abstención vuelve a ser la mayoría, la propuesta será rechazada definitivamente.
+            </div>
+            <button
+              onClick={handleStartSecondPeriod}
+              disabled={loadingAction}
+              className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-xs text-slate-950 bg-amber-400 hover:bg-amber-300 shadow-xl shadow-amber-500/20 transition-all disabled:opacity-50"
+            >
+              🔄 Activar 2º Periodo de Votación (Extender 3 Días)
+            </button>
+          </div>
+        )}
+
         {/* Voting Actions inside Voting section */}
         {showVotingActions && isVotingActive && (
           <div className="p-5 rounded-2xl bg-slate-950/80 border border-purple-500/30 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h4 className="font-extrabold text-sm text-white">Emitir Voto Único en esta Propuesta</h4>
+              <h4 className="font-extrabold text-sm text-white">
+                {proposal.secondPeriod ? '🔄 Emitir Voto en 2º Periodo (Repechaje)' : 'Emitir Voto en esta Propuesta'}
+              </h4>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-slate-400 font-semibold">Modo:</span>
                 <button
@@ -302,29 +352,29 @@ export default function ProposalDetailModal({
               </div>
             </div>
 
-            {hasVoted ? (
+            {hasVoted && !proposal.secondPeriod ? (
               <div className="p-3.5 rounded-xl bg-purple-950/50 border border-purple-500/40 text-purple-300 text-xs font-bold text-center flex items-center justify-center gap-2">
-                <span>🔒 Voto Definitivo Registrado (No modificable)</span>
+                <span>🔒 Voto Registrado en 1er Periodo (Definitivo hasta fin del periodo)</span>
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 <button
                   onClick={() => handleVote(VoteType.FOR)}
-                  disabled={loadingAction || hasVoted}
+                  disabled={loadingAction}
                   className="py-3 px-4 rounded-xl text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   👍 A Favor
                 </button>
                 <button
                   onClick={() => handleVote(VoteType.AGAINST)}
-                  disabled={loadingAction || hasVoted}
+                  disabled={loadingAction}
                   className="py-3 px-4 rounded-xl text-xs font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   👎 En Contra
                 </button>
                 <button
                   onClick={() => handleVote(VoteType.ABSTAIN)}
-                  disabled={loadingAction || hasVoted}
+                  disabled={loadingAction}
                   className="py-3 px-4 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   ⚪ Abstención

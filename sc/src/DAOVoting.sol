@@ -5,8 +5,8 @@ import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol"
 
 /**
  * @title DAOVoting
- * @dev Contrato DAO con gestión de membresías de socios (3 ETH) y propuestas con votación
- * Soporta votaciones y creación de propuestas con o sin gas mediante EIP-2771 meta-transacciones
+ * @dev Contrato DAO con gestión de membresías de socios (3 ETH), propuestas con votación de mayoría simple,
+ * cierre anticipado cuando todos los miembros votan, y segundo periodo de votación (repechaje) en caso de mayoría de abstención.
  */
 contract DAOVoting is ERC2771Context {
     enum VoteType {
@@ -27,6 +27,8 @@ contract DAOVoting is ERC2771Context {
         uint256 againstVotes;
         uint256 abstainVotes;
         string description;
+        bool secondPeriod;
+        bool rejected;
     }
 
     uint256 public proposalCount;
@@ -42,6 +44,8 @@ contract DAOVoting is ERC2771Context {
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => mapping(address => VoteType)) public votes;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
+    mapping(uint256 => mapping(address => bool)) public hasVotedSecondPeriod;
+    mapping(uint256 => uint256) public secondPeriodVotesCount;
     mapping(address => uint256) public balances; // Balance de cada usuario en el DAO
 
     event MemberRegistered(address indexed member, uint256 depositAmount);
@@ -58,6 +62,14 @@ contract DAOVoting is ERC2771Context {
         uint256 indexed proposalId,
         address indexed voter,
         VoteType voteType
+    );
+    event SecondPeriodStarted(
+        uint256 indexed proposalId,
+        uint256 newDeadline
+    );
+    event ProposalRejected(
+        uint256 indexed proposalId,
+        string reason
     );
     event ProposalExecuted(
         uint256 indexed proposalId,
@@ -169,7 +181,9 @@ contract DAOVoting is ERC2771Context {
             forVotes: 0,
             againstVotes: 0,
             abstainVotes: 0,
-            description: _description
+            description: _description,
+            secondPeriod: false,
+            rejected: false
         });
 
         emit ProposalCreated(
@@ -183,6 +197,52 @@ contract DAOVoting is ERC2771Context {
         );
 
         return proposalId;
+    }
+
+    /**
+     * @dev Consulta si la votación de una propuesta ya finalizó (por expirar el tiempo O por haber votado el 100% de miembros)
+     */
+    function isVotingFinished(uint256 _proposalId) public view returns (bool) {
+        Proposal memory p = proposals[_proposalId];
+        if (block.timestamp >= p.votingDeadline) return true;
+        if (memberCount == 0) return false;
+
+        if (!p.secondPeriod) {
+            uint256 totalVotes = p.forVotes + p.againstVotes + p.abstainVotes;
+            return totalVotes >= memberCount;
+        } else {
+            return secondPeriodVotesCount[_proposalId] >= memberCount;
+        }
+    }
+
+    /**
+     * @dev Consulta si la abstención es la mayoría de votos emitidos
+     */
+    function isAbstentionMajority(uint256 _proposalId) public view returns (bool) {
+        Proposal memory p = proposals[_proposalId];
+        return p.abstainVotes > p.forVotes && p.abstainVotes > p.againstVotes;
+    }
+
+    /**
+     * @dev Activa un segundo periodo de votación si la abstención fue la mayoría al finalizar el primer periodo
+     */
+    function enableSecondPeriod(uint256 _proposalId, uint256 _extraDuration) external {
+        require(_proposalId > 0 && _proposalId <= proposalCount, "ID de propuesta invalido");
+        Proposal storage p = proposals[_proposalId];
+
+        require(!p.executed, "La propuesta ya fue ejecutada");
+        require(!p.rejected, "La propuesta ya fue rechazada");
+        require(!p.secondPeriod, "El segundo periodo ya fue activado previamente");
+        require(isVotingFinished(_proposalId), "El primer periodo de votacion aun no ha finalizado");
+        require(isAbstentionMajority(_proposalId), "La abstencion no fue la mayoria en el primer periodo");
+        require(_extraDuration > 0, "Duracion invalida");
+
+        p.secondPeriod = true;
+        p.votingDeadline = block.timestamp + _extraDuration;
+        p.executionDelay = p.votingDeadline + EXECUTION_DELAY;
+        secondPeriodVotesCount[_proposalId] = 0;
+
+        emit SecondPeriodStarted(_proposalId, p.votingDeadline);
     }
 
     /**
@@ -201,33 +261,86 @@ contract DAOVoting is ERC2771Context {
         );
 
         Proposal storage proposal = proposals[_proposalId];
+        require(!proposal.executed, "La propuesta ya ha sido ejecutada");
+        require(!proposal.rejected, "La propuesta ha sido rechazada definitivamente");
         require(
-            block.timestamp < proposal.votingDeadline,
+            !isVotingFinished(_proposalId),
             "El periodo de votacion ha finalizado"
         );
-        require(!proposal.executed, "La propuesta ya ha sido ejecutada");
-        require(
-            !hasVoted[_proposalId][sender],
-            "Ya has emitido tu voto para esta propuesta"
-        );
 
-        // Registrar voto definitivo (no modificable)
-        votes[_proposalId][sender] = _voteType;
-        hasVoted[_proposalId][sender] = true;
+        if (!proposal.secondPeriod) {
+            // Periodo 1: Voto único inmutable
+            require(
+                !hasVoted[_proposalId][sender],
+                "Ya has emitido tu voto para esta propuesta"
+            );
+            hasVoted[_proposalId][sender] = true;
+            votes[_proposalId][sender] = _voteType;
 
-        if (_voteType == VoteType.FOR) {
-            proposal.forVotes++;
-        } else if (_voteType == VoteType.AGAINST) {
-            proposal.againstVotes++;
-        } else if (_voteType == VoteType.ABSTAIN) {
-            proposal.abstainVotes++;
+            if (_voteType == VoteType.FOR) {
+                proposal.forVotes++;
+            } else if (_voteType == VoteType.AGAINST) {
+                proposal.againstVotes++;
+            } else if (_voteType == VoteType.ABSTAIN) {
+                proposal.abstainVotes++;
+            }
+        } else {
+            // Periodo 2: Permite actualizar o emitir voto para resolver la abstención
+            require(
+                !hasVotedSecondPeriod[_proposalId][sender],
+                "Ya has emitido tu voto en el segundo periodo"
+            );
+
+            if (hasVoted[_proposalId][sender]) {
+                // Descuenta el voto emitido en el primer periodo
+                VoteType oldVote = votes[_proposalId][sender];
+                if (oldVote == VoteType.FOR) proposal.forVotes--;
+                else if (oldVote == VoteType.AGAINST) proposal.againstVotes--;
+                else if (oldVote == VoteType.ABSTAIN) proposal.abstainVotes--;
+            } else {
+                hasVoted[_proposalId][sender] = true;
+            }
+
+            hasVotedSecondPeriod[_proposalId][sender] = true;
+            secondPeriodVotesCount[_proposalId]++;
+            votes[_proposalId][sender] = _voteType;
+
+            if (_voteType == VoteType.FOR) {
+                proposal.forVotes++;
+            } else if (_voteType == VoteType.AGAINST) {
+                proposal.againstVotes++;
+            } else if (_voteType == VoteType.ABSTAIN) {
+                proposal.abstainVotes++;
+            }
         }
 
         emit Voted(_proposalId, sender, _voteType);
     }
 
     /**
-     * @dev Ejecuta una propuesta aprobada cuando expira el plazo y el retardo de seguridad.
+     * @dev Revisa y marca explícitamente si una propuesta fue rechazada definitivamente
+     */
+    function checkAndMarkRejected(uint256 _proposalId) public returns (bool) {
+        require(_proposalId > 0 && _proposalId <= proposalCount, "ID de propuesta invalido");
+        Proposal storage p = proposals[_proposalId];
+        if (p.executed || p.rejected) return p.rejected;
+
+        if (isVotingFinished(_proposalId)) {
+            if (p.secondPeriod && isAbstentionMajority(_proposalId)) {
+                p.rejected = true;
+                emit ProposalRejected(_proposalId, "Rechazada: mayoria de abstencion en el segundo periodo");
+                return true;
+            } else if (p.againstVotes >= p.forVotes && !isAbstentionMajority(_proposalId)) {
+                p.rejected = true;
+                emit ProposalRejected(_proposalId, "Rechazada: los votos en contra superan o igualan a los votos a favor");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @dev Ejecuta una propuesta aprobada por mayoría simple cuando expira el plazo y el retardo de seguridad.
      */
     function executeProposal(uint256 _proposalId) external {
         require(
@@ -237,17 +350,30 @@ contract DAOVoting is ERC2771Context {
 
         Proposal storage proposal = proposals[_proposalId];
         require(!proposal.executed, "La propuesta ya fue ejecutada");
+        require(!proposal.rejected, "La propuesta fue rechazada previamente");
         require(
-            block.timestamp >= proposal.votingDeadline,
+            isVotingFinished(_proposalId),
             "El periodo de votacion no ha finalizado"
         );
         require(
             block.timestamp >= proposal.executionDelay,
             "El tiempo de retardo de ejecucion no ha transcurrido"
         );
+
+        // Si la abstención es la mayoría
+        if (isAbstentionMajority(_proposalId)) {
+            if (proposal.secondPeriod) {
+                proposal.rejected = true;
+                emit ProposalRejected(_proposalId, "Rechazada por mayoria de abstencion en segundo periodo");
+                revert("La propuesta fue rechazada definitivamente por mayoria de abstencion en segundo periodo");
+            } else {
+                revert("La propuesta requiere activar el segundo periodo de votacion por mayoria de abstencion");
+            }
+        }
+
         require(
             proposal.forVotes > proposal.againstVotes,
-            "La propuesta no fue aprobada por mayoria de votos a favor"
+            "La propuesta no fue aprobada por mayoria simple de votos a favor"
         );
         require(totalDeposited >= proposal.amount, "Fondos insuficientes en la DAO");
 
@@ -279,7 +405,9 @@ contract DAOVoting is ERC2771Context {
             uint256 forVotes,
             uint256 againstVotes,
             uint256 abstainVotes,
-            string memory description
+            string memory description,
+            bool secondPeriod,
+            bool rejected
         )
     {
         require(
@@ -298,7 +426,9 @@ contract DAOVoting is ERC2771Context {
             proposal.forVotes,
             proposal.againstVotes,
             proposal.abstainVotes,
-            proposal.description
+            proposal.description,
+            proposal.secondPeriod,
+            proposal.rejected
         );
     }
 
@@ -313,18 +443,20 @@ contract DAOVoting is ERC2771Context {
     }
 
     /**
-     * @dev Verifica si la propuesta puede ejecutarse
+     * @dev Verifica si la propuesta puede ejecutarse por mayoría simple
      */
     function canExecute(uint256 _proposalId) external view returns (bool) {
         if (_proposalId == 0 || _proposalId > proposalCount) return false;
 
         Proposal memory proposal = proposals[_proposalId];
-        return
-            !proposal.executed &&
-            block.timestamp >= proposal.votingDeadline &&
-            block.timestamp >= proposal.executionDelay &&
-            proposal.forVotes > proposal.againstVotes &&
-            totalDeposited >= proposal.amount;
+        if (proposal.executed || proposal.rejected) return false;
+        if (!isVotingFinished(_proposalId)) return false;
+        if (block.timestamp < proposal.executionDelay) return false;
+        if (totalDeposited < proposal.amount) return false;
+
+        if (isAbstentionMajority(_proposalId)) return false;
+
+        return proposal.forVotes > proposal.againstVotes;
     }
 
     /**

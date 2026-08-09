@@ -78,10 +78,8 @@ export default function TreasuryPage() {
           let egresosWei = BigInt(0);
           for (let i = 1; i <= pCountNum; i++) {
             const p = await getProposal(provider, i);
-            const amount = BigInt(p[3]);
-            const executed = p[6];
-            if (executed) {
-              egresosWei += amount;
+            if (p.executed) {
+              egresosWei += p.amount;
             }
           }
           setTotalEgresos(ethers.formatEther(egresosWei));

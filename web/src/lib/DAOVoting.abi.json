@@ -102,6 +102,25 @@
   },
   {
     "type": "function",
+    "name": "checkAndMarkRejected",
+    "inputs": [
+      {
+        "name": "_proposalId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "createProposal",
     "inputs": [
       {
@@ -158,6 +177,24 @@
     "inputs": [],
     "outputs": [],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "enableSecondPeriod",
+    "inputs": [
+      {
+        "name": "_proposalId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_extraDuration",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -282,6 +319,16 @@
         "name": "description",
         "type": "string",
         "internalType": "string"
+      },
+      {
+        "name": "secondPeriod",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "rejected",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -368,6 +415,49 @@
   },
   {
     "type": "function",
+    "name": "hasVotedSecondPeriod",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isAbstentionMajority",
+    "inputs": [
+      {
+        "name": "_proposalId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "isMember",
     "inputs": [
       {
@@ -393,6 +483,25 @@
         "name": "forwarder",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isVotingFinished",
+    "inputs": [
+      {
+        "name": "_proposalId",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -521,6 +630,16 @@
         "name": "description",
         "type": "string",
         "internalType": "string"
+      },
+      {
+        "name": "secondPeriod",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "rejected",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -531,6 +650,25 @@
     "inputs": [],
     "outputs": [],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "secondPeriodVotesCount",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -718,6 +856,44 @@
       },
       {
         "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProposalRejected",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SecondPeriodStarted",
+    "inputs": [
+      {
+        "name": "proposalId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newDeadline",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

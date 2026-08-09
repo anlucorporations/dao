@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { getDAOContract, VoteType } from './contracts';
+import { getDAOContract, VoteType, Proposal } from './contracts';
 
 /**
  * Funciones de interacción directa con el Smart Contract de la DAO (pagando gas)
@@ -61,6 +61,31 @@ export async function voteDirect(
 ) {
   const daoContract = getDAOContract(signer);
   const tx = await daoContract.vote(proposalId, voteType);
+  return await tx.wait();
+}
+
+/**
+ * Activa el segundo periodo de votación (repechaje) cuando la abstención es la mayoría
+ */
+export async function enableSecondPeriodDirect(
+  signer: ethers.Signer,
+  proposalId: number,
+  extraDuration: number = 3 * 24 * 60 * 60
+) {
+  const daoContract = getDAOContract(signer);
+  const tx = await daoContract.enableSecondPeriod(proposalId, extraDuration);
+  return await tx.wait();
+}
+
+/**
+ * Verifica y marca explícitamente una propuesta como rechazada
+ */
+export async function checkAndMarkRejectedDirect(
+  signer: ethers.Signer,
+  proposalId: number
+) {
+  const daoContract = getDAOContract(signer);
+  const tx = await daoContract.checkAndMarkRejected(proposalId);
   return await tx.wait();
 }
 
@@ -159,14 +184,51 @@ export async function getProposalCount(
 }
 
 /**
- * Obtiene los detalles de una propuesta por ID
+ * Obtiene los detalles de una propuesta por ID y los mapea a la interfaz Proposal
  */
 export async function getProposal(
   signerOrProvider: ethers.Signer | ethers.Provider,
   proposalId: number
-) {
+): Promise<Proposal> {
   const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.getProposal(proposalId);
+  const p = await daoContract.getProposal(proposalId);
+  return {
+    id: BigInt(p.id || p[0]),
+    title: p.title || p[1],
+    recipient: p.recipient || p[2],
+    amount: BigInt(p.amount || p[3]),
+    votingDeadline: BigInt(p.votingDeadline || p[4]),
+    executionDelay: BigInt(p.executionDelay || p[5]),
+    executed: Boolean(p.executed || p[6]),
+    forVotes: BigInt(p.forVotes || p[7]),
+    againstVotes: BigInt(p.againstVotes || p[8]),
+    abstainVotes: BigInt(p.abstainVotes || p[9]),
+    description: p.description || p[10],
+    secondPeriod: Boolean(p.secondPeriod !== undefined ? p.secondPeriod : p[11]),
+    rejected: Boolean(p.rejected !== undefined ? p.rejected : p[12])
+  };
+}
+
+/**
+ * Consulta si la votación de una propuesta ya finalizó
+ */
+export async function isVotingFinished(
+  signerOrProvider: ethers.Signer | ethers.Provider,
+  proposalId: number
+): Promise<boolean> {
+  const daoContract = getDAOContract(signerOrProvider);
+  return await daoContract.isVotingFinished(proposalId);
+}
+
+/**
+ * Consulta si la abstención es la mayoría en una propuesta
+ */
+export async function isAbstentionMajority(
+  signerOrProvider: ethers.Signer | ethers.Provider,
+  proposalId: number
+): Promise<boolean> {
+  const daoContract = getDAOContract(signerOrProvider);
+  return await daoContract.isAbstentionMajority(proposalId);
 }
 
 /**
