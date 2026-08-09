@@ -6,7 +6,7 @@ const FORWARDER_ADDRESS = process.env.NEXT_PUBLIC_FORWARDER_CONTRACT_ADDRESS || 
 const RPC_URL = process.env.RPC_URL || 'http://127.0.0.1:8545';
 
 const FORWARDER_ABI = [
-  'function execute((address from,address to,uint256 value,uint256 gas,uint256 nonce,string accion,string detalles,bytes data) req, bytes signature) payable',
+  'function execute((address from,address to,uint256 value,uint256 gas,uint256 nonce,string accion,string detalles,bytes data) req, bytes signature) payable returns (bool, bytes)',
   'function getNonce(address from) view returns (uint256)'
 ];
 
@@ -65,13 +65,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Estimar gas y enviar transacción
+    // 1. Dry-run con staticCall para capturar el motivo exacto de revert sin enviar transacción que falle
     try {
-      await forwarder.execute.estimateGas(forwardRequest, signature);
-    } catch (gasError) {
-      console.error('Falló la estimación de gas:', gasError);
+      await forwarder.execute.staticCall(forwardRequest, signature);
+    } catch (simError: unknown) {
+      console.error('Simulación staticCall falló:', simError);
+      
+      let reasonMessage = 'La transacción fue rechazada por el Smart Contract.';
+      if (simError && typeof simError === 'object') {
+        if ('reason' in simError && typeof (simError as { reason: string }).reason === 'string') {
+          reasonMessage = (simError as { reason: string }).reason;
+        } else if ('shortMessage' in simError && typeof (simError as { shortMessage: string }).shortMessage === 'string') {
+          reasonMessage = (simError as { shortMessage: string }).shortMessage;
+        } else if ('message' in simError && typeof (simError as { message: string }).message === 'string') {
+          const raw = (simError as { message: string }).message;
+          const match = raw.match(/execution reverted: "([^"]+)"/);
+          if (match && match[1]) {
+            reasonMessage = match[1];
+          } else if (raw.includes('reverted')) {
+            reasonMessage = raw;
+          }
+        }
+      }
+
+      if (userAddress) {
+        userLocks.delete(userAddress);
+      }
+
+      return NextResponse.json(
+        {
+          error: 'Error de validación en el contrato',
+          message: reasonMessage
+        },
+        { status: 400 }
+      );
     }
 
+    // 2. Transmisión a la blockchain
     const tx = await forwarder.execute(forwardRequest, signature, {
       gasLimit: 3000000
     });
@@ -100,12 +130,7 @@ export async function POST(request: NextRequest) {
       if ('reason' in error && typeof (error as { reason: string }).reason === 'string') {
         detailMessage = (error as { reason: string }).reason;
       } else if ('message' in error && typeof (error as { message: string }).message === 'string') {
-        const fullMsg = (error as { message: string }).message;
-        if (fullMsg.includes('execution reverted')) {
-          detailMessage = fullMsg;
-        } else {
-          detailMessage = fullMsg;
-        }
+        detailMessage = (error as { message: string }).message;
       }
     }
 

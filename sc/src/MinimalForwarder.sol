@@ -5,7 +5,8 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title MinimalForwarder
- * @dev A minimal implementation of EIP-712 meta-transactions forwarder with human-readable parameters for MetaMask signing
+ * @dev Contrato verificador de firmas EIP-712 y ejecutor de meta-transacciones sin gas.
+ * Propaga los mensajes de error exactos del contrato objetivo para una depuración transparente.
  */
 contract MinimalForwarder {
     using ECDSA for bytes32;
@@ -80,7 +81,7 @@ contract MinimalForwarder {
         require(req.nonce == currentNonce, "Invalid nonce");
 
         address signer = getTypedDataHash(req).recover(signature);
-        require(signer == req.from, "Invalid signature");
+        require(signer == req.from, "Firma EIP-712 invalida o no coincide con el emisor");
         
         _nonces[req.from] = currentNonce + 1;
         
@@ -88,7 +89,17 @@ contract MinimalForwarder {
             abi.encodePacked(req.data, req.from)
         );
         
-        require(success, "Call failed");
+        if (!success) {
+            if (returndata.length > 0) {
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert("Fallo la ejecucion de la llamada en el contrato objetivo");
+            }
+        }
+
         return (success, returndata);
     }
 }
