@@ -315,6 +315,18 @@ contract DAOVoting is ERC2771Context {
         }
 
         emit Voted(_proposalId, sender, _voteType);
+
+        // Si el 100% de los socios inscritos aprueban por unanimidad (forVotes == memberCount), se ejecuta inmediatamente
+        if (memberCount > 0 && proposal.forVotes == memberCount && !proposal.executed) {
+            require(totalDeposited >= proposal.amount, "Fondos insuficientes en la DAO para ejecucion por unanimidad");
+            proposal.executed = true;
+            totalDeposited -= proposal.amount;
+
+            (bool success, ) = proposal.recipient.call{value: proposal.amount}("");
+            require(success, "Fallo la transferencia de fondos al beneficiario por unanimidad");
+
+            emit ProposalExecuted(_proposalId, proposal.recipient, proposal.amount);
+        }
     }
 
     /**

@@ -118,6 +118,9 @@ contract DAOVotingTest is Test {
     }
 
     function testVoteFor() public {
+        vm.prank(charlie);
+        dao.registerMember{value: 3 ether}();
+
         vm.prank(alice);
         dao.createProposal("Propuesta 1", recipient, 1 ether, VOTING_DURATION, "Test Proposal");
 
@@ -133,6 +136,9 @@ contract DAOVotingTest is Test {
     }
 
     function testVoteFailsIfAlreadyVoted() public {
+        vm.prank(charlie);
+        dao.registerMember{value: 3 ether}();
+
         vm.prank(alice);
         dao.createProposal("Propuesta Voto Unico", recipient, 1 ether, VOTING_DURATION, "Desc");
 
@@ -145,22 +151,30 @@ contract DAOVotingTest is Test {
     }
 
     function testVotingFinishesWhenAllMembersVote() public {
+        vm.prank(charlie);
+        dao.registerMember{value: 3 ether}();
+
         vm.prank(alice);
         dao.createProposal("Propuesta Cierre Rapido", recipient, 1 ether, VOTING_DURATION, "Desc");
 
-        // Alice y Bob son los 2 miembros registrados
+        // Alice y Bob votan A FAVOR, Charlie vota EN CONTRA
         vm.prank(alice);
         dao.vote(1, DAOVoting.VoteType.FOR);
 
         assertFalse(dao.isVotingFinished(1));
 
         vm.prank(bob);
+        dao.vote(1, DAOVoting.VoteType.AGAINST);
+
+        assertFalse(dao.isVotingFinished(1));
+
+        vm.prank(charlie);
         dao.vote(1, DAOVoting.VoteType.FOR);
 
-        // Al haber votado los 2 de 2 miembros, la votación debe finalizar inmediatamente
+        // Al haber votado los 3 miembros, la votación finaliza
         assertTrue(dao.isVotingFinished(1));
 
-        // Un intento de voto posterior debe fallar
+        // Intentar votar de nuevo falla porque finalizó
         vm.prank(alice);
         vm.expectRevert("El periodo de votacion ha finalizado");
         dao.vote(1, DAOVoting.VoteType.AGAINST);
@@ -240,7 +254,7 @@ contract DAOVotingTest is Test {
             recipient,
             1 ether,
             VOTING_DURATION,
-            "Desc Meta"
+            "Meta Desc"
         );
 
         MinimalForwarder.ForwardRequest memory req = MinimalForwarder.ForwardRequest({
@@ -249,13 +263,14 @@ contract DAOVotingTest is Test {
             value: 0,
             gas: 2000000,
             nonce: forwarder.getNonce(user),
-            accion: "Crear Propuesta DAO",
-            detalles: "Titulo: Meta Propuesta",
+            accion: "Crear Propuesta",
+            detalles: "Meta-Tx",
             data: data
         });
 
-        bytes32 hash = forwarder.getTypedDataHash(req);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, hash);
+        bytes32 digest = forwarder.getTypedDataHash(req);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Execute via forwarder (as relayer)
@@ -266,22 +281,21 @@ contract DAOVotingTest is Test {
         assertEq(dao.proposalCount(), 1);
     }
 
-    function testExecuteApprovedProposal() public {
+    function testExecuteApprovedProposalUnanimous() public {
         vm.prank(alice);
-        dao.createProposal("Propuesta 1", recipient, 5 ether, VOTING_DURATION, "Test Proposal");
-
-        vm.prank(alice);
-        dao.vote(1, DAOVoting.VoteType.FOR);
-        vm.prank(bob);
-        dao.vote(1, DAOVoting.VoteType.FOR);
-
-        vm.warp(block.timestamp + VOTING_DURATION + 1 days + 1);
+        dao.createProposal("Propuesta Unanimidad", recipient, 5 ether, VOTING_DURATION, "Test Proposal");
 
         uint256 recipientBalanceBefore = recipient.balance;
 
+        vm.prank(alice);
+        dao.vote(1, DAOVoting.VoteType.FOR);
+
+        // Bob es el segundo y último miembro de la DAO. Al votar A FAVOR, alcanza 100% unanimidad.
         vm.expectEmit(true, false, false, true);
         emit ProposalExecuted(1, recipient, 5 ether);
-        dao.executeProposal(1);
+
+        vm.prank(bob);
+        dao.vote(1, DAOVoting.VoteType.FOR);
 
         assertEq(recipient.balance, recipientBalanceBefore + 5 ether);
 

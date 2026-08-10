@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getProvider, getSigner } from '@/lib/web3';
 import { Proposal } from '@/lib/contracts';
-import { getProposalCount, getProposal, executeProposalDirect, getUserVote } from '@/lib/daoHelpers';
+import { getProposalCount, getProposal, executeProposalDirect, getUserVote, getMemberCount } from '@/lib/daoHelpers';
 import ProposalDetailModal from './ProposalDetailModal';
 
 interface ProposalWithVote extends Proposal {
@@ -18,7 +18,8 @@ interface ProposalHistoryProps {
 export default function ProposalHistory({ onSelectProposal }: ProposalHistoryProps) {
   const [proposals, setProposals] = useState<ProposalWithVote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'executed' | 'approved_pending' | 'rejected'>('all');
+  const [memberCount, setMemberCount] = useState<number>(1);
+  const [filter, setFilter] = useState<'all' | 'active' | 'executed' | 'approved_pending' | 'rejected' | 'abstention'>('all');
   const [executingId, setExecutingId] = useState<number | null>(null);
   const [blockchainTime, setBlockchainTime] = useState<number>(0);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -47,6 +48,13 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
         console.error('Error al obtener timestamp de blockchain:', err);
       }
 
+      try {
+        const mCount = await getMemberCount(provider);
+        setMemberCount(Number(mCount));
+      } catch {
+        setMemberCount(1);
+      }
+
       let currentUserAddress: string | null = null;
       try {
         const signer = await getSigner();
@@ -60,30 +68,24 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
       const count = await getProposalCount(provider);
       const historyList: ProposalWithVote[] = [];
 
-      const now = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
-
+      // Cargar TODAS las propuestas del sistema (ID 1 a count)
       for (let i = 1; i <= Number(count); i++) {
         const p = await getProposal(provider, i);
-        const deadline = Number(p.votingDeadline);
-        const executed = p.executed;
-        const rejected = p.rejected;
 
-        if (executed || rejected || now >= deadline) {
-          let userVote: number | undefined = undefined;
-          if (currentUserAddress) {
-            try {
-              const vote = await getUserVote(provider, i, currentUserAddress);
-              userVote = Number(vote);
-            } catch {
-              // sin voto
-            }
+        let userVote: number | undefined = undefined;
+        if (currentUserAddress) {
+          try {
+            const vote = await getUserVote(provider, i, currentUserAddress);
+            userVote = Number(vote);
+          } catch {
+            // sin voto
           }
-
-          historyList.push({
-            ...p,
-            userVote
-          });
         }
+
+        historyList.push({
+          ...p,
+          userVote
+        });
       }
 
       setProposals(historyList.reverse());
@@ -122,21 +124,41 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
     }
   };
 
+  const nowTime = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
+
+  // Auxiliares de estatus de propuesta
+  const isFinished = (p: ProposalWithVote) => {
+    if (p.executed || p.rejected) return true;
+    if (nowTime >= Number(p.votingDeadline)) return true;
+    const totalVotes = Number(p.forVotes + p.againstVotes + p.abstainVotes);
+    return memberCount > 0 && totalVotes >= memberCount;
+  };
+
   const totalExecuted = proposals.filter((p) => p.executed);
   const totalETHDisbursed = totalExecuted.reduce((acc, p) => acc + BigInt(p.amount), BigInt(0));
-  
-  const nowTime = blockchainTime > 0 ? blockchainTime : Math.floor(Date.now() / 1000);
+
   const pendingExecution = proposals.filter(
-    (p) => !p.executed && nowTime >= Number(p.votingDeadline) && p.forVotes > p.againstVotes
+    (p) => !p.executed && !p.rejected && isFinished(p) && p.forVotes > p.againstVotes
   );
-  const rejectedCount = proposals.filter(
-    (p) => !p.executed && nowTime >= Number(p.votingDeadline) && p.forVotes <= p.againstVotes
-  ).length;
+
+  const finishedProposals = proposals.filter((p) => isFinished(p));
+  
+  const rejectedProposals = proposals.filter(
+    (p) => p.rejected || (!p.executed && isFinished(p) && p.forVotes <= p.againstVotes)
+  );
+
+  const abstentionProposals = proposals.filter(
+    (p) => p.secondPeriod || (p.abstainVotes > p.forVotes && p.abstainVotes > p.againstVotes)
+  );
+
+  const activeProposals = proposals.filter((p) => !isFinished(p));
 
   const filteredProposals = proposals.filter((p) => {
+    if (filter === 'active') return !isFinished(p);
     if (filter === 'executed') return p.executed;
-    if (filter === 'approved_pending') return !p.executed && nowTime >= Number(p.votingDeadline) && p.forVotes > p.againstVotes;
-    if (filter === 'rejected') return !p.executed && nowTime >= Number(p.votingDeadline) && p.forVotes <= p.againstVotes;
+    if (filter === 'approved_pending') return !p.executed && !p.rejected && isFinished(p) && p.forVotes > p.againstVotes;
+    if (filter === 'rejected') return p.rejected || (!p.executed && isFinished(p) && p.forVotes <= p.againstVotes);
+    if (filter === 'abstention') return p.secondPeriod || (p.abstainVotes > p.forVotes && p.abstainVotes > p.againstVotes);
     return true;
   });
 
@@ -157,50 +179,54 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
           <div>
             <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300">
-              📜 Histórico Completo de Propuestas
+              📜 Registro Histórico Completo de Propuestas
             </h2>
             <p className="text-slate-400 text-xs mt-1">
-              Haz clic en cualquier propuesta histórica para desplegar la ficha de información detallada.
+              Visualiza el listado global de todas las propuestas con sus estados (Activa, Aprobada, Ejecutada, Rechazada, Abstención).
             </p>
           </div>
 
           <div className="px-3.5 py-1.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-extrabold shrink-0">
-            Registro Histórico Inmutable
+            Smart Contract On-Chain
           </div>
         </div>
 
-        {/* Global Historical Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        {/* Resumen Global de Propuestas Registradas y Finalizadas */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Concluidas</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Creadas</span>
             <div className="text-2xl font-extrabold text-white">{proposals.length}</div>
-            <p className="text-[10px] text-slate-500">Propuestas evaluadas</p>
+            <p className="text-[10px] text-slate-500">Registradas en DAO</p>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Ejecutadas con Éxito</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Total Concluidas</span>
+            <div className="text-2xl font-extrabold text-cyan-300">{finishedProposals.length}</div>
+            <p className="text-[10px] text-slate-500">Votación finalizada</p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Aprobadas / Ejecutadas</span>
             <div className="text-2xl font-extrabold text-emerald-400">{totalExecuted.length}</div>
-            <p className="text-[10px] text-slate-500">Fondos desembolsados</p>
+            <p className="text-[10px] text-slate-500">{ethers.formatEther(totalETHDisbursed)} ETH desembolsados</p>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Total ETH Transferido</span>
-            <div className="text-2xl font-extrabold text-cyan-300">
-              {ethers.formatEther(totalETHDisbursed)} <span className="text-xs">ETH</span>
-            </div>
-            <p className="text-[10px] text-slate-500">Aprobadado por la comunidad</p>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Rechazadas</span>
+            <div className="text-2xl font-extrabold text-rose-400">{rejectedProposals.length}</div>
+            <p className="text-[10px] text-slate-500">Sin consenso de votos</p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Rechazadas / Vencidas</span>
-            <div className="text-2xl font-extrabold text-rose-400">{rejectedCount}</div>
-            <p className="text-[10px] text-slate-500">Sin consenso suficiente</p>
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1 col-span-2 sm:col-span-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">En Abstención</span>
+            <div className="text-2xl font-extrabold text-amber-400">{abstentionProposals.length}</div>
+            <p className="text-[10px] text-slate-500">2º periodo o indecisión</p>
           </div>
         </div>
 
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80">
-          <span className="text-xs font-bold text-slate-400 mr-2">Filtrar Histórico:</span>
+          <span className="text-xs font-bold text-slate-400 mr-2">Filtrar por Estado:</span>
           <button
             onClick={() => setFilter('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -210,6 +236,16 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
             }`}
           >
             Todas ({proposals.length})
+          </button>
+          <button
+            onClick={() => setFilter('active')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              filter === 'active'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            🟢 Activas ({activeProposals.length})
           </button>
           <button
             onClick={() => setFilter('executed')}
@@ -239,7 +275,17 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                 : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
             }`}
           >
-            ❌ Rechazadas ({rejectedCount})
+            ❌ Rechazadas ({rejectedProposals.length})
+          </button>
+          <button
+            onClick={() => setFilter('abstention')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              filter === 'abstention'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+            }`}
+          >
+            ⚖️ Abstención ({abstentionProposals.length})
           </button>
         </div>
       </div>
@@ -264,7 +310,7 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
       {loading ? (
         <div className="glass-card p-12 rounded-3xl border border-purple-500/20 text-center">
           <div className="w-12 h-12 mx-auto mb-4 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Cargando historial desde la blockchain...</p>
+          <p className="text-slate-400 text-sm">Cargando propuestas desde la blockchain...</p>
         </div>
       ) : filteredProposals.length === 0 ? (
         <div className="glass-card p-12 rounded-3xl border border-purple-500/20 text-center bg-slate-900/60">
@@ -277,8 +323,10 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
       ) : (
         <div className="space-y-4">
           {filteredProposals.map((prop) => {
-            const isApprovedPending = !prop.executed && nowTime >= Number(prop.votingDeadline) && prop.forVotes > prop.againstVotes;
-            const isRejected = !prop.executed && nowTime >= Number(prop.votingDeadline) && prop.forVotes <= prop.againstVotes;
+            const finished = isFinished(prop);
+            const isApprovedPending = !prop.executed && !prop.rejected && finished && prop.forVotes > prop.againstVotes;
+            const isRejected = prop.rejected || (!prop.executed && finished && prop.forVotes <= prop.againstVotes);
+            const isUnanimous = prop.executed && memberCount > 0 && Number(prop.forVotes) === memberCount;
             const totalVotes = Number(prop.forVotes + prop.againstVotes + prop.abstainVotes);
             
             const forPercent = totalVotes > 0 ? (Number(prop.forVotes) / totalVotes) * 100 : 0;
@@ -304,7 +352,7 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                         <span className="text-xs text-cyan-400 font-normal">🔍</span>
                       </h3>
                       <div className="text-xs text-slate-400 font-mono mt-0.5">
-                        Beneficiario: <span className="text-slate-300">{prop.recipient}</span> • Finalizada: <span className="text-slate-300">{formatDate(prop.votingDeadline)}</span>
+                        Beneficiario: <span className="text-slate-300">{prop.recipient}</span> • Caducidad Votación: <span className="text-slate-300">{formatDate(prop.votingDeadline)}</span>
                       </div>
                     </div>
                   </div>
@@ -317,7 +365,12 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                       <span>🔍 Ver Detalles</span>
                     </button>
 
-                    {prop.executed ? (
+                    {/* Insignias de Estatus */}
+                    {isUnanimous ? (
+                      <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-gradient-to-r from-purple-500/30 to-cyan-500/30 text-cyan-300 border border-cyan-500/40 shadow-sm shadow-cyan-500/20">
+                        ⚡ Unanimidad (100%)
+                      </span>
+                    ) : prop.executed ? (
                       <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                         🚀 Ejecutada
                       </span>
@@ -325,13 +378,18 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                       <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 animate-pulse">
                         ⏳ Aprobada Pendiente
                       </span>
+                    ) : prop.secondPeriod ? (
+                      <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        ⚖️ 2º Periodo
+                      </span>
                     ) : isRejected ? (
                       <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                         ❌ Rechazada
                       </span>
                     ) : (
-                      <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                        📋 Cerrada
+                      <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+                        🟢 Votación Activa
                       </span>
                     )}
 
@@ -349,56 +407,54 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                 {/* Voting Outcome Progress */}
                 <div className="space-y-2 py-3 bg-slate-950/50 p-4 rounded-2xl border border-slate-800/80">
                   <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-emerald-400">Votos A Favor: {Number(prop.forVotes)} ({forPercent.toFixed(0)}%)</span>
-                    <span className="text-rose-400">Votos En Contra: {Number(prop.againstVotes)} ({againstPercent.toFixed(0)}%)</span>
-                    <span className="text-slate-400">Abstenciones: {Number(prop.abstainVotes)}</span>
+                    <span className="text-slate-400">Resultados de Votación ({totalVotes} Voto/s)</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-emerald-400">👍 {Number(prop.forVotes)} ({forPercent.toFixed(0)}%)</span>
+                      <span className="text-rose-400">👎 {Number(prop.againstVotes)} ({againstPercent.toFixed(0)}%)</span>
+                      <span className="text-amber-400">⚪ {Number(prop.abstainVotes)}</span>
+                    </div>
                   </div>
 
-                  <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden flex">
-                    <div style={{ width: `${forPercent}%` }} className="bg-emerald-500 h-full" />
-                    <div style={{ width: `${againstPercent}%` }} className="bg-rose-500 h-full" />
+                  <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden flex">
+                    <div className="bg-emerald-500 h-full transition-all" style={{ width: `${forPercent}%` }} />
+                    <div className="bg-rose-500 h-full transition-all" style={{ width: `${againstPercent}%` }} />
                   </div>
                 </div>
 
-                {/* Actions Footer */}
-                <div className="pt-4 mt-2 border-t border-slate-800 flex items-center justify-between gap-4">
-                  <button
-                    onClick={() => handleOpenDetail(prop)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white transition-all flex items-center gap-1.5"
-                  >
-                    <span>🔍 Ver Información Detallada Completa</span>
-                  </button>
-
-                  {isApprovedPending && (
+                {/* Card Action Footer */}
+                {isApprovedPending && (
+                  <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between">
+                    <span className="text-xs text-cyan-300 font-medium">
+                      ✓ La propuesta cuenta con votos a favor suficientes para ser ejecutada.
+                    </span>
                     <button
                       onClick={() => handleExecute(Number(prop.id))}
                       disabled={executingId === Number(prop.id)}
-                      className="px-5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-xl shadow-cyan-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
+                      className="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-600/30 flex items-center gap-2"
                     >
                       {executingId === Number(prop.id) ? (
-                        <span>Ejecutando...</span>
-                      ) : (
                         <>
-                          <span>🚀 Ejecutar y Desembolsar</span>
-                          <span>→</span>
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Ejecutando...</span>
                         </>
+                      ) : (
+                        <span>🚀 Ejecutar Ahora</span>
                       )}
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Standalone Detail Modal if not handled by parent */}
+      {/* Modal de Detalle Completo de Propuesta */}
       {selectedDetail && (
         <ProposalDetailModal
           proposal={selectedDetail}
           onClose={() => setSelectedDetail(null)}
           onRefresh={loadHistory}
-          blockchainTime={blockchainTime}
         />
       )}
     </div>

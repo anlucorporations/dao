@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import WalletConnect from '@/components/WalletConnect';
+import NotificationsMenu from '@/components/NotificationsMenu';
 import { getSigner } from '@/lib/web3';
 
 const baseNavItems = [
@@ -16,6 +17,7 @@ const baseNavItems = [
 export function DashboardHeader() {
   const pathname = usePathname();
   const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [account, setAccount] = useState<string | null>(null);
 
   const OWNER_ADDRESS = process.env.NEXT_PUBLIC_OWNER_ADDRESS || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
 
@@ -25,11 +27,14 @@ export function DashboardHeader() {
         const signer = await getSigner();
         if (signer) {
           const addr = await signer.getAddress();
+          setAccount(addr);
           setIsOwner(addr.toLowerCase() === OWNER_ADDRESS.toLowerCase());
         } else {
+          setAccount(null);
           setIsOwner(false);
         }
       } catch {
+        setAccount(null);
         setIsOwner(false);
       }
     }
@@ -37,7 +42,7 @@ export function DashboardHeader() {
     checkOwnerStatus();
     const interval = setInterval(checkOwnerStatus, 4000);
     return () => clearInterval(interval);
-  }, [pathname]);
+  }, [pathname, OWNER_ADDRESS]);
 
   const navItems = isOwner
     ? [...baseNavItems, { href: '/dashboard/system', label: 'Sistema', icon: '⚙️' }]
@@ -100,11 +105,15 @@ export function DashboardHeader() {
             </div>
           </nav>
 
-          {/* Right: Landing Page Link & WalletConnect */}
+          {/* Right: Notifications Menu & WalletConnect */}
           <div className="flex items-center gap-3 shrink-0">
             <Link href="/" className="text-xs font-bold text-slate-400 hover:text-white transition-colors hidden xl:block">
               ← Landing Page
             </Link>
+
+            {/* Menú de Notificaciones para Socios Inscritos */}
+            <NotificationsMenu account={account} />
+
             <WalletConnect />
           </div>
 
