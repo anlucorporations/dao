@@ -22,8 +22,13 @@ export async function GET() {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const daoContract = new ethers.Contract(DAO_ADDRESS, DAO_ABI, provider);
 
-    const totalDeposited = await daoContract.getTotalDeposited();
-    const totalDepositedETH = parseFloat(ethers.formatEther(totalDeposited)) || 1;
+    let totalDepositedETH = 1;
+    try {
+      const totalDeposited = await daoContract.getTotalDeposited();
+      totalDepositedETH = parseFloat(ethers.formatEther(totalDeposited)) || 1;
+    } catch {
+      totalDepositedETH = 1;
+    }
 
     // Obtener eventos MemberRegistered desde el bloque 0
     const filter = daoContract.filters.MemberRegistered();
