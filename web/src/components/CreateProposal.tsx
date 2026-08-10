@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getSigner } from '@/lib/web3';
 import { getForwarderContract, DAO_CONTRACT_ADDRESS } from '@/lib/contracts';
-import { createProposalDirect, checkIsMember, getDAOBalance } from '@/lib/daoHelpers';
+import { createProposalDirect, checkIsMember, getDAOBalance, getUserBalance } from '@/lib/daoHelpers';
 import { buildCreateProposalRequest, signMetaTxRequest } from '@/lib/metaTx';
 
 interface CreateProposalProps {
@@ -88,6 +88,14 @@ export default function CreateProposal({ signer, account, onProposalCreated, onC
 
       // Verificar que el monto de la propuesta no supere el balance total de la DAO
       const daoTotalBalance = await getDAOBalance(activeSigner);
+      const userBalance = await getUserBalance(activeSigner, userAddress);
+
+      if (daoTotalBalance > BigInt(0) && (userBalance * BigInt(100) < daoTotalBalance * BigInt(10))) {
+        throw new Error(
+          `Debes poseer al menos el 10% del balance total de la tesorería de la DAO para crear una propuesta (Posees: ${ethers.formatEther(userBalance)} ETH / Tesorería: ${ethers.formatEther(daoTotalBalance)} ETH).`
+        );
+      }
+
       if (amountWei > daoTotalBalance) {
         throw new Error(
           `El monto solicitado (${amount} ETH) supera el balance total disponible en la tesorería de la DAO (${ethers.formatEther(daoTotalBalance)} ETH).`

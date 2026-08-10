@@ -164,6 +164,12 @@ contract DAOVoting is ERC2771Context {
             isMember[sender],
             "Debe estar inscrito como socio de la DAO para crear una propuesta"
         );
+        if (totalDeposited > 0) {
+            require(
+                balances[sender] * 100 >= totalDeposited * PROPOSAL_CREATION_THRESHOLD,
+                "El socio debe poseer al menos el 10% del balance total de la DAO para crear propuestas"
+            );
+        }
         require(bytes(_title).length > 0, "El titulo de la propuesta no puede estar vacio");
         require(_recipient != address(0), "Direccion de beneficiario invalida");
         require(_amount > 0, "El monto a transferir debe ser mayor a 0");

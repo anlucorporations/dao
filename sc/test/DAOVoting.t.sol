@@ -114,7 +114,19 @@ contract DAOVotingTest is Test {
     function testCreateProposalFailsForNonMember() public {
         vm.prank(charlie);
         vm.expectRevert("Debe estar inscrito como socio de la DAO para crear una propuesta");
-        dao.createProposal("Test", recipient, 1 ether, VOTING_DURATION, "Desc");
+        dao.createProposal("Propuesta Falla", recipient, 1 ether, VOTING_DURATION, "Desc");
+    }
+
+    function testCreateProposalFailsInsufficientBalanceThreshold() public {
+        address dave = address(0x444);
+        vm.deal(dave, 500 ether);
+        vm.prank(dave);
+        dao.deposit{value: 100 ether}(); // Aumenta el balance total de la DAO a 106 ETH
+
+        // Alice posee 3 ETH (3/106 = 2.83% < 10%), debe fallar al intentar crear la propuesta
+        vm.prank(alice);
+        vm.expectRevert("El socio debe poseer al menos el 10% del balance total de la DAO para crear propuestas");
+        dao.createProposal("Propuesta Umbral Insuficiente", recipient, 1 ether, VOTING_DURATION, "Desc");
     }
 
     function testVoteFor() public {
