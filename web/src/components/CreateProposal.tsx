@@ -123,6 +123,8 @@ export default function CreateProposal({ signer, account, onProposalCreated, onC
               value: request.value.toString(),
               gas: request.gas.toString(),
               nonce: request.nonce.toString(),
+              accion: request.accion,
+              detalles: request.detalles,
               data: request.data
             },
             signature
