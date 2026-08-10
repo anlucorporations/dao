@@ -65,9 +65,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const reqStruct = {
+      from: forwardRequest.from,
+      to: forwardRequest.to,
+      value: forwardRequest.value ? BigInt(forwardRequest.value) : BigInt(0),
+      gas: forwardRequest.gas ? BigInt(forwardRequest.gas) : BigInt(1000000),
+      nonce: requestedNonce,
+      accion: forwardRequest.accion || 'Transacción DAO',
+      detalles: forwardRequest.detalles || 'Meta-transacción EIP-712',
+      data: forwardRequest.data
+    };
+
     // 1. Dry-run con staticCall para capturar el motivo exacto de revert sin enviar transacción que falle
     try {
-      await forwarder.execute.staticCall(forwardRequest, signature);
+      await forwarder.execute.staticCall(reqStruct, signature);
     } catch (simError: unknown) {
       console.error('Simulación staticCall falló:', simError);
       
@@ -102,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Transmisión a la blockchain
-    const tx = await forwarder.execute(forwardRequest, signature, {
+    const tx = await forwarder.execute(reqStruct, signature, {
       gasLimit: 3000000
     });
 
