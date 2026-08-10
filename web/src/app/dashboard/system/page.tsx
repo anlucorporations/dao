@@ -298,13 +298,13 @@ export default function SystemPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">Billetera Relayer Patrocinadora (Cuenta #9 Anvil)</span>
+                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">Billetera Relayer Patrocinadora (Owner Cuenta #0 Anvil)</span>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
                   {systemStatus?.relayer.status || 'Activo'}
                 </span>
               </div>
               <div className="font-mono font-bold text-white break-all bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                {systemStatus?.relayer.address || '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720'}
+                {systemStatus?.relayer.address || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'}
               </div>
 
               {/* Sub-grid de Métricas del Relayer */}
