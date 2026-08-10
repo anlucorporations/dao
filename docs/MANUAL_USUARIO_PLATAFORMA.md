@@ -1,51 +1,82 @@
 # 👤 Manual de Usuario — Plataforma DAO Gasless EIP-2771
 
-Bienvenido a la guía de usuario oficial de la plataforma **DAO con Votación Gasless**.
+Bienvenido a la guía oficial de usuario para interactuar con la plataforma **DAO Gasless con Gobernanza Descentralizada**.
 
 ---
 
-## 1. Conexión de Billetera y Membresía
+## 1. Conexión de Billetera y Certificación de Membresía
 
-1. **Acceso a la Web**: Ingresa a la URL de la plataforma (`http://localhost:3000` o la URL de Cloud Run).
-2. **Conectar MetaMask**: Haz clic en el botón **"Conectar Wallet"** en la esquina superior derecha.
-3. **Muro de Inscripción (3.0 ETH)**:
-   - Si tu billetera no está inscrita como socio, verás una pantalla de bienvenida con la opción de unirte.
-   - Presiona **"🛡️ Inscribirse como Socio (3.0 ETH)"** y confirma la transacción en MetaMask.
-   - Una vez confirmada, recibirás la insignia de **Socio Certificado** y podrás acceder al Dashboard.
+1. **Ingreso a la Aplicación**: Navega a `http://localhost:3000` (entorno local) o a la URL pública en Cloud Run.
+2. **Conectar MetaMask**: Haz clic en **"Conectar Wallet"** en la barra superior del Dashboard.
+3. **Inscripción de Socio (3.0 ETH)**:
+   - Si tu dirección no está registrada como socio, verás la pantalla de verificación de membresía.
+   - Haz clic en **"🛡️ Inscribirse como Socio (3.0 ETH)"** y confirma el depósito en MetaMask.
+   - Una vez procesada la transacción, obtendrás el estado de **Socio Certificado** y acceso completo al sistema.
 
 ---
 
 ## 2. Creación de Propuestas
 
-1. Dirígete a la sección **"Crear Propuesta"** en la barra lateral.
-2. Ingresa el Título, Beneficiario, Monto solicitado (ETH), Duración y la Justificación del proyecto.
-3. Selecciona la modalidad:
-   - **⚡ Sin Gas (Recomendado)**: Firmarás un mensaje EIP-712 en MetaMask **sin pagar comisiones**.
-   - **⛽ Directo**: Transacción normal pagando comisiones de gas.
-4. En MetaMask verás la ventana de firma con los detalles claros del proyecto. Haz clic en **"Firmar"**.
+1. Ingresa a la pestaña **"Crear Propuesta"** en el menú lateral.
+2. Completa los campos solicitados: Título, Billetera Beneficiaria, Monto en ETH, Plazo de Votación y Memoria Justificativa.
+3. Elige la modalidad de transmisión:
+   - **⚡ Sin Gas (EIP-712 Relayer)**: Firmarás un mensaje estructurado en MetaMask sin costo de comisiones de red. El Owner actúa como patrocinador de gas.
+   - **⛽ Directo**: Transacción tradicional pagando las tarifas de gas de la blockchain.
+4. Presiona **"Crear Propuesta"** y confirma en MetaMask.
 
 ---
 
-## 3. Emisión de Voto en Vivo
+## 3. Emisión de Votos y Unanimidad (100%)
 
-1. Ve a la sección **"Centro de Votación"** (`/dashboard/voting`).
-2. Haz clic en **"Ver Detalle / Votar"** sobre la propuesta deseada.
-3. Selecciona tu voto: **👍 A FAVOR**, **👎 EN CONTRA** o **⚪ ABSTENCIÓN**.
-4. Firma la autorización en MetaMask.
-5. Al completarse, verás el distintivo **"🔒 Voto Definitivo Registrado"**. Recuerda que cada socio solo puede votar 1 sola vez por propuesta.
-
----
-
-## 4. Ejecución de Propuestas Aprobadas
-
-Una vez que expira la fecha límite y el periodo de retardo, si los votos a favor superan a los en contra, la propuesta podrá ser ejecutada directamente por cualquier socio o automáticamente por el Daemon de la plataforma para realizar el desembolso de los fondos ETH al beneficiario.
+1. Dirígete a **"Centro de Votación"** (`/dashboard/voting`).
+2. Haz clic en **"Ver Detalle / Votar"** sobre la propuesta activa.
+3. Selecciona tu opción de voto:
+   - **👍 A FAVOR**
+   - **👎 EN CONTRA**
+   - **⚪ ABSTENCIÓN**
+4. Firma la transacción (modalidad Gasless o Directa).
+5. **Cierre por Unanimidad del 100%**: Si el 100% de los socios inscritos en la DAO aprueban por unanimidad una propuesta, el periodo de votación concluye inmediatamente sin esperar la fecha límite.
 
 ---
 
-## 5. Sección de Administración del Sistema (Exclusiva del Owner)
+## 4. Ejecución de Propuestas Aprobadas (Exclusiva del Owner)
 
-La sección **⚙️ Sistema** (`/dashboard/system`) es un panel de control técnico que se habilita únicamente cuando se conecta la billetera del **Owner / Administrador**:
-- **Billeteras & Relayer**: Supervisión del saldo en ETH de la wallet relayer, nonces y bloqueos anti-replay.
-- **Smart Contracts & Red**: Direcciones del contrato de gobernanza `DAOVoting.sol` y del forwarder `MinimalForwarder.sol`, balance de tesorería y parámetros del nodo RPC.
-- **Buscador de Socios**: Herramienta de inspección criptográfica para consultar el estado de membresía y saldos de cualquier dirección Ethereum (`0x...`).
-- **Diagnóstico & Exportación**: Test de salud del sistema en vivo y exportación del informe técnico en formato JSON.
+- **Regla de Autorización**: La ejecución manual de propuestas finalizadas y aprobadas está **restringida exclusivamente a la billetera del Owner / Administrador** (`0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`).
+- **Vista para Socios Convencionales**: Los socios verán la insignia de estado:
+  `🔒 Propuesta Aprobada. La ejecución manual está reservada exclusivamente a la billetera del Owner`.
+- **Vista para la Wallet del Owner**: El Owner visualizará el botón **"🚀 Ejecutar Propuesta y Desembolsar ETH (Acción de Owner)"**, permitiéndole realizar el desembolso de fondos al beneficiario en cualquier momento.
+
+---
+
+## 5. Menú de Notificaciones en Vivo 🔔
+
+En la barra superior del Dashboard se ubica el **Menú de Notificaciones**:
+- **Campana de Alertas 🔔**: Muestra un contador en tiempo real con las alertas no leídas.
+- **Eventos Notificados**:
+  - 🏁 Finalización de votaciones.
+  - ⚡ Aprobación por Unanimidad (100%).
+  - ⚖️ Activación del 2º Periodo de Votación (Repechaje).
+- **Acciones**: Permite marcar notificaciones como leídas o borrar el historial.
+
+---
+
+## 6. Histórico de Propuestas y Resumen Metodológico
+
+En la sección **"Histórico de Propuestas"** (`/dashboard/proposals`):
+- Muestra el listado de **todas las propuestas registradas** en la historia de la DAO.
+- Encabezado con 5 tarjetas métricas:
+  1. **Total Creadas**
+  2. **Total Concluidas**
+  3. **Aprobadas / Ejecutadas** (con suma total de ETH desembolsado)
+  4. **Rechazadas**
+  5. **En Abstención**
+- Filtros por estatus: *Todas*, *Activas*, *Ejecutadas*, *Aprobadas Pendientes*, *Rechazadas*, *Abstención*.
+
+---
+
+## 7. Panel de Administración de Sistema (`/dashboard/system`)
+
+Sección reservada exclusivamente al **Owner / Administrador**:
+- **Saldos en ETH de Contratos**: Tarjetas informativas con los fondos de `DAOVoting.sol` (Tesorería) y `MinimalForwarder.sol`.
+- **Supervisión de Gas Relayer**: Balance en ETH de la wallet patrocinadora de gas.
+- **Buscador de Socios**: Inspección criptográfica del estado de membresía y saldos de cualquier dirección Ethereum (`0x...`).
