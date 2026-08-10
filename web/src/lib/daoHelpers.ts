@@ -23,8 +23,16 @@ export async function checkIsMember(
   signerOrProvider: ethers.Signer | ethers.Provider,
   userAddress: string
 ): Promise<boolean> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.isMember(userAddress);
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.isMember(userAddress);
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'BAD_DATA') {
+      console.warn('BAD_DATA al llamar isMember. El contrato no responde o no está desplegado en la red actual.');
+      return false;
+    }
+    return false;
+  }
 }
 
 /**
@@ -120,8 +128,12 @@ export async function getUserBalance(
   signerOrProvider: ethers.Signer | ethers.Provider,
   userAddress: string
 ): Promise<bigint> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.getUserBalance(userAddress);
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.getUserBalance(userAddress);
+  } catch {
+    return BigInt(0);
+  }
 }
 
 /**
@@ -130,8 +142,8 @@ export async function getUserBalance(
 export async function getMemberCount(
   signerOrProvider: ethers.Signer | ethers.Provider
 ): Promise<bigint> {
-  const daoContract = getDAOContract(signerOrProvider);
   try {
+    const daoContract = getDAOContract(signerOrProvider);
     return await daoContract.memberCount();
   } catch {
     return BigInt(0);
@@ -144,8 +156,12 @@ export async function getMemberCount(
 export async function getTotalDeposited(
   signerOrProvider: ethers.Signer | ethers.Provider
 ): Promise<bigint> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.getTotalDeposited();
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.getTotalDeposited();
+  } catch {
+    return BigInt(0);
+  }
 }
 
 /**
@@ -154,15 +170,12 @@ export async function getTotalDeposited(
 export async function getDAOBalance(
   signerOrProvider: ethers.Signer | ethers.Provider
 ): Promise<bigint> {
-  const daoContract = getDAOContract(signerOrProvider);
-  const provider = 'provider' in signerOrProvider ? signerOrProvider.provider : signerOrProvider;
-  if (provider) {
-    const code = await provider.getCode(daoContract.target);
-    if (code === '0x') {
-      throw new Error('El contrato no está desplegado en la dirección configurada.');
-    }
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.getBalance();
+  } catch {
+    return BigInt(0);
   }
-  return await daoContract.getBalance();
 }
 
 /**
@@ -171,15 +184,15 @@ export async function getDAOBalance(
 export async function getProposalCount(
   signerOrProvider: ethers.Signer | ethers.Provider
 ): Promise<bigint> {
-  const daoContract = getDAOContract(signerOrProvider);
   try {
+    const daoContract = getDAOContract(signerOrProvider);
     return await daoContract.proposalCount();
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'BAD_DATA') {
-      const contractAddress = typeof daoContract.target === 'string' ? daoContract.target : await daoContract.getAddress();
-      throw new Error(`Contrato no encontrado en ${contractAddress}. Verifica tu archivo .env.local.`);
+      console.warn('Contrato no desplegado o BAD_DATA en proposalCount.');
+      return BigInt(0);
     }
-    throw error;
+    return BigInt(0);
   }
 }
 
@@ -216,8 +229,12 @@ export async function isVotingFinished(
   signerOrProvider: ethers.Signer | ethers.Provider,
   proposalId: number
 ): Promise<boolean> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.isVotingFinished(proposalId);
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.isVotingFinished(proposalId);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -227,8 +244,12 @@ export async function isAbstentionMajority(
   signerOrProvider: ethers.Signer | ethers.Provider,
   proposalId: number
 ): Promise<boolean> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.isAbstentionMajority(proposalId);
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.isAbstentionMajority(proposalId);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -238,8 +259,12 @@ export async function canExecuteProposal(
   signerOrProvider: ethers.Signer | ethers.Provider,
   proposalId: number
 ): Promise<boolean> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.canExecute(proposalId);
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.canExecute(proposalId);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -250,6 +275,10 @@ export async function getUserVote(
   proposalId: number,
   userAddress: string
 ): Promise<VoteType> {
-  const daoContract = getDAOContract(signerOrProvider);
-  return await daoContract.getUserVote(proposalId, userAddress);
+  try {
+    const daoContract = getDAOContract(signerOrProvider);
+    return await daoContract.getUserVote(proposalId, userAddress);
+  } catch {
+    return VoteType.ABSTAIN;
+  }
 }
