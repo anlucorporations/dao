@@ -12,13 +12,25 @@ export async function GET() {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     let relayerAddress = '';
     let relayerBalance = '0';
+    let txCount = 0;
+    let spentETH = '0.000000';
     let blockNumber = 0;
 
     if (RELAYER_PRIVATE_KEY) {
       const relayer = new ethers.Wallet(RELAYER_PRIVATE_KEY, provider);
       relayerAddress = await relayer.getAddress();
+      
       const balWei = await provider.getBalance(relayerAddress);
       relayerBalance = ethers.formatEther(balWei);
+
+      txCount = await provider.getTransactionCount(relayerAddress);
+
+      // Calcular ETH gastado asumiendo saldo inicial de Anvil (10,000 ETH)
+      const initialWei = BigInt('10000000000000000000000'); // 10,000 ETH
+      if (initialWei > balWei) {
+        const spentWei = initialWei - balWei;
+        spentETH = parseFloat(ethers.formatEther(spentWei)).toFixed(6);
+      }
     }
 
     try {
@@ -45,6 +57,8 @@ export async function GET() {
       relayer: {
         address: relayerAddress,
         balanceETH: parseFloat(relayerBalance).toFixed(4),
+        txCount,
+        spentETH,
         status: relayerAddress ? 'Activo' : 'No Configurado'
       },
       contracts: {
