@@ -40,15 +40,33 @@ export async function GET() {
     }
 
     let forwarderDeployed = false;
-    if (FORWARDER_ADDRESS) {
-      const code = await provider.getCode(FORWARDER_ADDRESS);
-      forwarderDeployed = code !== '0x';
+    let forwarderBalanceETH = '0.0000';
+    if (FORWARDER_ADDRESS && ethers.isAddress(FORWARDER_ADDRESS)) {
+      try {
+        const code = await provider.getCode(FORWARDER_ADDRESS);
+        forwarderDeployed = code !== '0x';
+        if (forwarderDeployed) {
+          const bal = await provider.getBalance(FORWARDER_ADDRESS);
+          forwarderBalanceETH = parseFloat(ethers.formatEther(bal)).toFixed(4);
+        }
+      } catch {
+        forwarderDeployed = false;
+      }
     }
 
     let daoDeployed = false;
-    if (DAO_ADDRESS) {
-      const code = await provider.getCode(DAO_ADDRESS);
-      daoDeployed = code !== '0x';
+    let daoBalanceETH = '0.0000';
+    if (DAO_ADDRESS && ethers.isAddress(DAO_ADDRESS)) {
+      try {
+        const code = await provider.getCode(DAO_ADDRESS);
+        daoDeployed = code !== '0x';
+        if (daoDeployed) {
+          const bal = await provider.getBalance(DAO_ADDRESS);
+          daoBalanceETH = parseFloat(ethers.formatEther(bal)).toFixed(4);
+        }
+      } catch {
+        daoDeployed = false;
+      }
     }
 
     return NextResponse.json({
@@ -64,8 +82,10 @@ export async function GET() {
       contracts: {
         daoAddress: DAO_ADDRESS,
         daoDeployed,
+        daoBalanceETH,
         forwarderAddress: FORWARDER_ADDRESS,
-        forwarderDeployed
+        forwarderDeployed,
+        forwarderBalanceETH
       },
       network: {
         rpcUrl: RPC_URL,

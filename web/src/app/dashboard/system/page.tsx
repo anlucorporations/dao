@@ -18,8 +18,10 @@ interface SystemStatus {
   contracts: {
     daoAddress: string;
     daoDeployed: boolean;
+    daoBalanceETH: string;
     forwarderAddress: string;
     forwarderDeployed: boolean;
+    forwarderBalanceETH: string;
   };
   network: {
     rpcUrl: string;
@@ -357,13 +359,19 @@ export default function SystemPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white">DAOVoting.sol</span>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">🟢 Desplegado</span>
               </div>
               <div className="font-mono text-[11px] text-slate-400 break-all bg-slate-900 p-2 rounded-lg">
                 {systemStatus?.contracts.daoAddress}
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Saldo en Contrato:</span>
+                <span className="font-extrabold text-xs text-purple-300 font-mono">
+                  {systemStatus?.contracts.daoBalanceETH || '0.0000'} ETH
+                </span>
               </div>
               <ul className="text-[10px] text-slate-400 space-y-1 pt-1">
                 <li>• Membresía Fija: <strong>3.0 ETH</strong></li>
@@ -372,13 +380,19 @@ export default function SystemPage() {
               </ul>
             </div>
 
-            <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
+            <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white">MinimalForwarder.sol</span>
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">🟢 Desplegado</span>
               </div>
               <div className="font-mono text-[11px] text-slate-400 break-all bg-slate-900 p-2 rounded-lg">
                 {systemStatus?.contracts.forwarderAddress}
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Saldo en Contrato:</span>
+                <span className="font-extrabold text-xs text-cyan-300 font-mono">
+                  {systemStatus?.contracts.forwarderBalanceETH || '0.0000'} ETH
+                </span>
               </div>
               <ul className="text-[10px] text-slate-400 space-y-1 pt-1">
                 <li>• Estándar: <strong>EIP-712 Meta-Tx</strong></li>
