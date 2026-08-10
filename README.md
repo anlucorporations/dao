@@ -52,7 +52,10 @@
 4. [Herramientas Principales & Stack Tecnológico](#-herramientas-principales--stack-tecnológico)
 5. [Mejoras del Frontend & Experiencia de Usuario (UI/UX)](#-mejoras-del-frontend--experiencia-de-usuario-uiux)
 6. [Estructura del Proyecto](#-estructura-del-proyecto)
-7. [Guía de Inicio Rápido en Local](#-guía-de-inicio-rápido-en-local)
+7. [⚙️ GUÍA DETALLADA DE DESPLIEGUE (Local, Testnet y Cloud Run)](#️-guía-detallada-de-despliegue-local-testnet-y-cloud-run)
+   - [7.1 Despliegue Entorno Local (Anvil + Next.js 15)](#71-despliegue-entorno-local-anvil--nextjs-15)
+   - [7.2 Despliegue en Redes Testnet / Mainnet (Sepolia / Arbitrum)](#72-despliegue-en-redes-testnet--mainnet-sepolia--arbitrum)
+   - [7.3 Despliegue en la Nube (Google Cloud Run / Docker)](#73-despliegue-en-la-nube-google-cloud-run--docker)
 8. [Batería de Pruebas Automatizadas (Foundry)](#-batería-de-pruebas-automatizadas-foundry)
 9. [Documentación Complementaria (`./docs`)](#-documentación-complementaria-docs)
 
@@ -60,7 +63,7 @@
 
 ## 🏗️ Descripción y Arquitectura del Sistema
 
-La **DAO Voting Platform** es una solución empresarial de gobernanza cooperativa construida sobre tecnología EVM que resuelve el problema de la alta fricción por comisiones de gas en transacciones blockchain. 
+La **DAO Voting Platform** es una solución empresarial de gobernanza cooperativa construida sobre tecnología EVM que resuelve el problema de la alta fricción por comisiones de gas en transacciones blockchain.
 
 El sistema utiliza una arquitectura modular de 4 capas:
 
@@ -90,11 +93,11 @@ El sistema utiliza una arquitectura modular de 4 capas:
 - **Membresía por Cuota Fija (3.0 ETH)**:
   - Todo usuario debe depositar exactamente 3.0 ETH a través de `registerMember()` para obtener la certificación de socio de la DAO.
 - **Umbral de Creación del 10% (`PROPOSAL_CREATION_THRESHOLD`)**:
-  - Para evitar propuesta de spam, el creador debe poseer al menos el **10% del balance total depositado en la tesorería de la DAO** (`balances[sender] * 100 >= totalDeposited * 10`).
+  - Para evitar propuestas no fundamentadas, el creador debe poseer al menos el **10% del balance total depositado en la tesorería de la DAO** (`balances[sender] * 100 >= totalDeposited * 10`).
 - **Cierre Anticipado por Unanimidad del 100%**:
   - Si el 100% de los socios inscritos en la DAO votan a favor (`memberCount > 0 && forVotes == memberCount`), el periodo de votación concluye de inmediato.
 - **Segunda Votación / Repechaje en Caso de Abstención**:
-  - Si la opción de Abstención obtiene la mayoría de votos (`abstainVotes > forVotes && abstainVotes > againstVotes`), el contrato no descarta la propuesta inmediatamente, sino que activa un **2º Periodo de Votación (Repechaje)** de 3 días. Si la abstención gana nuevamente en el 2º periodo, la propuesta queda definitivamente **RECHAZADA** (`rejected = true`).
+  - Si la opción de Abstención obtiene la mayoría de votos (`abstainVotes > forVotes && abstainVotes > againstVotes`), el contrato activa un **2º Periodo de Votación (Repechaje)** de 3 días. Si la abstención gana nuevamente en el 2º periodo, la propuesta queda definitivamente **RECHAZADA** (`rejected = true`).
 - **Ejecución Manual Exclusiva del Owner**:
   - La función `executeProposal(uint256)` está restringida criptográficamente mediante `require(_msgSender() == owner)`. 
   - Si la propuesta fue aprobada por unanimidad del 100%, el tiempo de retardo `executionDelay` (1 día) se omite, permitiendo la ejecución manual inmediata por el Owner.
@@ -153,7 +156,7 @@ El sistema utiliza una arquitectura modular de 4 capas:
 │   ├── test/
 │   │   └── DAOVoting.t.sol          # Suite de 13 pruebas unitarias (100% PASS)
 │   └── script/
-│       └── Deploy.s.sol             # Script de despliegue en Anvil
+│       └── Deploy.s.sol             # Script de despliegue en Anvil / Testnet
 │
 ├── web/                             # Aplicación Next.js 15 Frontend
 │   ├── src/
@@ -165,7 +168,7 @@ El sistema utiliza una arquitectura modular de 4 capas:
 │   │   │   └── dashboard/           # Secciones (Proposals, Voting, Treasury, System)
 │   │   ├── components/              # Componentes UI (NotificationsMenu, ProposalHistory, etc.)
 │   │   └── lib/                     # Utilities (metaTx.ts, daoHelpers.ts, contracts.ts)
-│   └── public/
+│   └── Dockerfile                   # Dockerfile Node 20 Alpine multi-stage build
 │
 └── docs/                            # Documentación exhaustiva técnica y de usuario
     ├── MANUAL_TECNICO.md
@@ -177,30 +180,111 @@ El sistema utiliza una arquitectura modular de 4 capas:
 
 ---
 
-## 🚀 Guía de Inicio Rápido en Local
+## ⚙️ GUÍA DETALLADA DE DESPLIEGUE (Local, Testnet y Cloud Run)
 
-### 1. Requisitos
-- **Node.js**: v18.x o v20.x
-- **Foundry**: Herramientas `forge` y `anvil`
-- **MetaMask**: Extensión de navegador
+### 7.1 Despliegue Entorno Local (Anvil + Next.js 15)
 
-### 2. Ejecución Local (3 Pasos)
-
+#### Paso 1: Iniciar el Nodo Anvil Blockchain
+Abre la primera terminal e inicia Anvil:
 ```bash
-# Paso 1: Iniciar el Nodo Anvil Blockchain
 cd sc
 anvil
+```
+*Anvil genera 10 cuentas privadas con 10,000 ETH cada una en `http://127.0.0.1:8545` (Chain ID `31337`).*
 
-# Paso 2: Desplegar Smart Contracts e Inscribir Owner (3 ETH)
+#### Paso 2: Desplegar Smart Contracts e Inscribir al Owner (3 ETH)
+Abre la segunda terminal y ejecuta el script de Foundry:
+```bash
 cd sc
 forge script script/Deploy.s.sol:DeployScript --rpc-url http://127.0.0.1:8545 --broadcast --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+*Resultado*:
+- `MinimalForwarder`: `0x5FbDB2315678afecb367f032d93F642f64180aa3`
+- `DAOVoting`: `0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512`
+- La wallet `#0` de Anvil se inscribe automáticamente depositando 3 ETH.
 
-# Paso 3: Iniciar Servidor Web Next.js 15
-cd ../web
-npm run dev
+#### Paso 3: Configurar Variables de Entorno Web (`web/.env.local`)
+Asegúrate de que `web/.env.local` contenga los valores del despliegue:
+```env
+# Direcciones públicas de contratos inteligentes
+NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512
+NEXT_PUBLIC_FORWARDER_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+
+# Dirección del Owner (Cuenta #0 Anvil)
+NEXT_PUBLIC_OWNER_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+# Patrocinador Relayer (Owner)
+RELAYER_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+RELAYER_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+# Nodo Blockchain RPC
+RPC_URL=http://127.0.0.1:8545
 ```
 
-Abre en tu navegador: **[http://localhost:3000](http://localhost:3000)**
+#### Paso 4: Iniciar Servidor Web Next.js 15
+Abre la tercera terminal e inicia el servidor en desarrollo:
+```bash
+cd web
+npm run dev
+```
+Navega a **[http://localhost:3000](http://localhost:3000)**.
+
+---
+
+### 7.2 Despliegue en Redes Testnet / Mainnet (Sepolia / Arbitrum)
+
+Para desplegar en una red pública de prueba como **Sepolia**:
+
+1. **Configurar claves y RPC en `sc/.env`**:
+   ```env
+   PRIVATE_KEY=0x_tu_clave_privada_con_sepolia_eth
+   SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/TU_API_KEY
+   ETHERSCAN_API_KEY=TU_API_KEY_ETHERSCAN
+   ```
+
+2. **Ejecutar Despliegue y Verificación On-Chain**:
+   ```bash
+   cd sc
+   forge script script/Deploy.s.sol:DeployScript \
+     --rpc-url $SEPOLIA_RPC_URL \
+     --broadcast \
+     --verify \
+     --etherscan-api-key $ETHERSCAN_API_KEY \
+     --private-key $PRIVATE_KEY
+   ```
+
+3. **Actualizar `web/.env.local`** con las nuevas direcciones asignadas en Sepolia y compilar la versión de producción:
+   ```bash
+   cd web
+   npm run build
+   ```
+
+---
+
+### 7.3 Despliegue en la Nube (Google Cloud Run / Docker)
+
+El proyecto incluye un contenedor Docker multi-stage optimizado (`web/Dockerfile`).
+
+#### Paso 1: Construcción de la Imagen Docker
+```bash
+cd web
+docker build -t gcr.io/TU_PROJECT_ID_GCP/dao-web:v2.2.0 .
+```
+
+#### Paso 2: Subida al Registro de Contenedores de GCP
+```bash
+docker push gcr.io/TU_PROJECT_ID_GCP/dao-web:v2.2.0
+```
+
+#### Paso 3: Despliegue en Google Cloud Run
+```bash
+gcloud run deploy dao-app \
+  --image gcr.io/TU_PROJECT_ID_GCP/dao-web:v2.2.0 \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars NEXT_PUBLIC_DAO_CONTRACT_ADDRESS="0x...",NEXT_PUBLIC_FORWARDER_CONTRACT_ADDRESS="0x...",RPC_URL="https://sepolia.infura.io/v3/...",RELAYER_PRIVATE_KEY="0x..."
+```
 
 ---
 
