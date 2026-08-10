@@ -62,6 +62,7 @@ export default function RegisterMember({ signer, account, onMemberStatusChange }
       setError(null);
       setSuccessMsg(null);
 
+      // Transacción directa on-chain: La billetera del usuario que se inscribe paga los 3 ETH y el gas
       await registerMemberDirect(activeSigner);
       
       setIsMember(true);
@@ -98,25 +99,28 @@ export default function RegisterMember({ signer, account, onMemberStatusChange }
         </div>
         <h3 className="text-xl font-bold text-white mb-2">Conecta tu Billetera</h3>
         <p className="text-slate-300 text-sm max-w-md mx-auto">
-          Para verificar tu estado de membresía o inscribirte como socio de la DAO, primero conecta tu billetera MetaMask.
+          Conecta tu billetera Web3 para verificar tu estado de membresía o inscribirte como socio.
         </p>
       </div>
     );
   }
 
+  if (checking) {
+    return (
+      <div className="glass-card p-6 rounded-2xl border border-purple-500/20 text-center">
+        <div className="w-8 h-8 mx-auto mb-2 border-2 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+        <span className="text-xs text-slate-400">Verificando estado de membresía on-chain...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="glass-card p-8 rounded-3xl border border-purple-500/30 bg-gradient-to-br from-slate-900/90 via-purple-950/30 to-cyan-950/40 backdrop-blur-xl shadow-2xl relative overflow-hidden">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+    <div className="glass-card p-6 sm:p-8 rounded-3xl border border-purple-500/20 bg-gradient-to-br from-slate-900/90 via-slate-950 to-purple-950/30 space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-300 to-cyan-300">
-              Inscripción de Socio DAO
-            </h2>
-            {checking ? (
-              <span className="px-3 py-1 text-xs rounded-full bg-slate-800 text-slate-400 border border-slate-700 animate-pulse">
-                Verificando...
-              </span>
-            ) : isMember ? (
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-extrabold text-white">Muro de Inscripción de Socio</h3>
+            {isMember ? (
               <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow-sm shadow-emerald-500/20">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 Socio Activo
@@ -127,17 +131,17 @@ export default function RegisterMember({ signer, account, onMemberStatusChange }
               </span>
             )}
           </div>
-          <p className="text-slate-300 text-sm">
-            Depósito obligatorio de <span className="font-bold text-cyan-300">3 ETH</span> para obtener derechos de voto y creación de propuestas.
+          <p className="text-slate-300 text-sm mt-1">
+            Depósito obligatorio de <span className="font-bold text-cyan-300">3.0 ETH</span> para obtener derechos de voto y creación de propuestas.
           </p>
         </div>
 
-        <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-3 rounded-2xl flex items-center gap-3">
+        <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-3 rounded-2xl flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-300 border border-purple-500/30">
             <span className="font-black text-lg">3</span>
           </div>
           <div>
-            <div className="text-xs text-slate-400">Cuota de Membresía</div>
+            <div className="text-xs text-slate-400">Cuota Fija</div>
             <div className="text-sm font-bold text-white">3.0 ETH</div>
           </div>
         </div>
@@ -153,7 +157,7 @@ export default function RegisterMember({ signer, account, onMemberStatusChange }
           <div>
             <h4 className="font-bold text-emerald-300 text-base mb-1">¡Billetera Inscrita Exitosamente!</h4>
             <p className="text-sm text-emerald-200/80">
-              Tu dirección <code className="bg-emerald-900/50 px-2 py-0.5 rounded text-emerald-300 text-xs font-mono">{currentAccount}</code> se encuentra registrada como socio activo de la DAO. Tienes acceso completo para crear propuestas y emitir tu voto con o sin gas.
+              Tu dirección <code className="bg-emerald-900/50 px-2 py-0.5 rounded text-emerald-300 text-xs font-mono">{currentAccount}</code> se encuentra registrada como socio activo de la DAO. Tienes acceso completo para crear propuestas y emitir tu voto.
             </p>
           </div>
         </div>
@@ -164,13 +168,12 @@ export default function RegisterMember({ signer, account, onMemberStatusChange }
               <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Beneficios de la Inscripción
+              Condiciones de Pago de Gas para Inscripción
             </h4>
             <ul className="text-xs text-slate-300 space-y-2 list-disc list-inside">
-              <li>Derecho a votar en todas las propuestas activas de la DAO.</li>
-              <li>Capacidad para crear propuestas de financiamiento comunitarias.</li>
-              <li>Opción de elegir entre transacciones sin gas (vía Relayer) o transacciones en cadena directas.</li>
-              <li>Los 3 ETH de inscripción se suman al balance de tu cuenta en la tesorería de la DAO.</li>
+              <li><strong>⛽ Pago Directo de Gas</strong>: La cuenta que se inscribe firma la transacción on-chain y <strong>paga directamente las comisiones de gas</strong> desde su propia billetera MetaMask.</li>
+              <li><strong>💰 Depósito de 3.0 ETH</strong>: El importe íntegro de 3.0 ETH se acredita a tu saldo individual en la tesorería de la DAO.</li>
+              <li><strong>⚡ Gobernanza Posterior Gasless</strong>: Una vez inscrito, la creación de propuestas y la votación podrán realizarse <strong>sin costo de gas</strong> mediante firmas EIP-712 patrocinadas por el Relayer.</li>
             </ul>
           </div>
 
@@ -203,14 +206,14 @@ export default function RegisterMember({ signer, account, onMemberStatusChange }
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <span>Procesando Inscripción de 3 ETH...</span>
+                <span>Procesando Transacción (3 ETH + Gas del Socio)...</span>
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
-                <span>Inscribirse como Socio (Depositar 3 ETH)</span>
+                <span>Inscribirse como Socio (3 ETH + Pago Directo de Gas)</span>
               </>
             )}
           </button>
