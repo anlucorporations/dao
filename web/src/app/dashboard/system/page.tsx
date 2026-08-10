@@ -297,7 +297,7 @@ export default function SystemPage() {
             <div className="p-5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2">
               <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">Billetera Relayer (Comisiones de Gas)</span>
               <div className="font-mono font-bold text-white break-all bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                {systemStatus?.relayer.address || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'}
+                {systemStatus?.relayer.address || '0xa0Ee7A142d267C1f36714E4a8F75612F20a79720'}
               </div>
               <div className="flex items-center justify-between pt-1">
                 <span className="text-slate-400">Saldo Disponible en Relayer:</span>
