@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { getProvider, getSigner } from '@/lib/web3';
-import { checkIsMember, getUserBalance, getMemberCount } from '@/lib/daoHelpers';
+import { checkIsMember, getUserBalance } from '@/lib/daoHelpers';
 import ConfigCheck from '@/components/ConfigCheck';
 
 interface SystemStatus {
@@ -27,11 +27,23 @@ interface SystemStatus {
   };
 }
 
+interface MemberRecord {
+  address: string;
+  isOwner: boolean;
+  daoBalanceETH: string;
+  walletBalanceETH: string;
+  participationPercentage: string;
+}
+
 export default function SystemPage() {
   const [account, setAccount] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+
+  // Lista de socios registrados y saldos
+  const [membersList, setMembersList] = useState<MemberRecord[]>([]);
+  const [membersLoading, setMembersLoading] = useState<boolean>(true);
 
   // Estados de consulta individual de socio
   const [searchAddress, setSearchAddress] = useState<string>('');
@@ -77,6 +89,9 @@ export default function SystemPage() {
             setSystemStatus(data);
           }
         }
+
+        // Cargar lista oficial de socios desde la API /api/system/members
+        loadMembers();
       } catch (err) {
         console.error('Error al inicializar panel de sistema:', err);
       } finally {
@@ -86,6 +101,23 @@ export default function SystemPage() {
 
     initSystem();
   }, [OWNER_ADDRESS]);
+
+  const loadMembers = async () => {
+    setMembersLoading(true);
+    try {
+      const res = await fetch('/api/system/members');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.members)) {
+          setMembersList(data.members);
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar socios:', err);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
 
   const handleSearchMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,6 +208,7 @@ export default function SystemPage() {
       accountConnected: account,
       isOwner,
       systemStatus,
+      registeredMembers: membersList,
       diagnostics: diagResults
     };
 
@@ -344,20 +377,84 @@ export default function SystemPage() {
           </div>
         </div>
 
-        {/* Section 3: Certified Member Management & Search */}
-        <div className="glass-card p-7 rounded-3xl border border-slate-800 bg-slate-900/80 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <span>👥 Inspección & Verificación de Socios Certificados</span>
-            </h3>
-            <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
-              Registro Criptográfico
-            </span>
+        {/* Section 3: Registered Members Table & Individual Search */}
+        <div className="glass-card p-7 rounded-3xl border border-slate-800 bg-slate-900/80 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <span>👥 Registro Oficial de Socios Inscritos & Saldos en la DAO</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Lista verificada de billeteras de socios registrados en la blockchain y el balance aportado por cada uno.
+              </p>
+            </div>
+            <button
+              onClick={loadMembers}
+              disabled={membersLoading}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-cyan-300 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 transition-all shrink-0"
+            >
+              🔄 Actualizar Lista
+            </button>
           </div>
 
-          <form onSubmit={handleSearchMember} className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+          {/* Members Table */}
+          {membersLoading ? (
+            <div className="p-8 text-center text-slate-400 text-xs">
+              <div className="w-8 h-8 mx-auto mb-2 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin" />
+              <span>Cargando registro on-chain de socios inscritos...</span>
+            </div>
+          ) : membersList.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-xs">
+              No hay socios inscritos registrados todavía en la blockchain.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-950/80 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="p-3.5 rounded-l-xl">Socio / Billetera</th>
+                    <th className="p-3.5 text-right">Saldo Aportado en DAO</th>
+                    <th className="p-3.5 text-right">Saldo Billetera (MetaMask)</th>
+                    <th className="p-3.5 text-right rounded-r-xl">Ponderación (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {membersList.map((mem) => (
+                    <tr key={mem.address} className="hover:bg-slate-950/50 transition-colors">
+                      <td className="p-3.5 font-mono">
+                        <div className="flex items-center gap-2">
+                          {mem.isOwner ? (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/40 font-extrabold text-[10px]">
+                              👑 OWNER
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-extrabold text-[10px]">
+                              🛡️ SOCIO
+                            </span>
+                          )}
+                          <span className="font-bold text-white">{mem.address}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-right font-extrabold text-purple-300 font-mono">
+                        {mem.daoBalanceETH} ETH
+                      </td>
+                      <td className="p-3.5 text-right font-extrabold text-cyan-300 font-mono">
+                        {mem.walletBalanceETH} ETH
+                      </td>
+                      <td className="p-3.5 text-right font-bold text-pink-300 font-mono">
+                        {mem.participationPercentage}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Individual Search Form */}
+          <form onSubmit={handleSearchMember} className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3 pt-4">
             <label className="text-xs font-bold text-slate-300 block">
-              Buscador Criptográfico de Billeteras de Socios (Dirección Ethereum 0x...):
+              Buscador Criptográfico Individual de Billeteras (Dirección Ethereum 0x...):
             </label>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
