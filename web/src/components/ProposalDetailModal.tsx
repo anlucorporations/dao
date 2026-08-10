@@ -25,6 +25,24 @@ export default function ProposalDetailModal({
   const [isGasless, setIsGasless] = useState<boolean>(true);
   const [loadingAction, setLoadingAction] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+
+  const OWNER_ADDRESS = process.env.NEXT_PUBLIC_OWNER_ADDRESS || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+
+  useEffect(() => {
+    async function checkOwner() {
+      try {
+        const signer = await getSigner();
+        if (signer) {
+          const addr = await signer.getAddress();
+          setIsOwner(addr.toLowerCase() === OWNER_ADDRESS.toLowerCase());
+        }
+      } catch {
+        setIsOwner(false);
+      }
+    }
+    checkOwner();
+  }, [OWNER_ADDRESS]);
 
   // Cerrar modal al presionar la tecla Escape
   useEffect(() => {
@@ -45,7 +63,8 @@ export default function ProposalDetailModal({
   const isVotingTimeFinished = now >= Number(proposal.votingDeadline);
   const isVotingActive = !proposal.executed && !proposal.rejected && !isVotingTimeFinished;
 
-  const canExecute = !proposal.executed && !proposal.rejected && isVotingTimeFinished && now >= Number(proposal.executionDelay) && proposal.forVotes > proposal.againstVotes && !isAbstentionMajority;
+  const isUnanimous = proposal.forVotes > 0 && proposal.againstVotes === BigInt(0) && proposal.abstainVotes === BigInt(0);
+  const canExecute = !proposal.executed && !proposal.rejected && (isVotingTimeFinished || isUnanimous) && proposal.forVotes > proposal.againstVotes && !isAbstentionMajority;
   const canStartSecondPeriod = isVotingTimeFinished && isAbstentionMajority && !proposal.secondPeriod && !proposal.executed && !proposal.rejected;
 
   const hasVoted = proposal.userVote !== undefined && proposal.userVote !== 0;
@@ -386,13 +405,26 @@ export default function ProposalDetailModal({
 
         {canExecute && (
           <div className="pt-2">
-            <button
-              onClick={handleExecute}
-              disabled={loadingAction}
-              className="w-full py-4 px-6 rounded-2xl font-extrabold text-xs text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-xl shadow-cyan-500/30 transition-all disabled:opacity-50"
-            >
-              🚀 Ejecutar Propuesta y Desembolsar {ethers.formatEther(proposal.amount)} ETH
-            </button>
+            {isOwner ? (
+              <button
+                onClick={handleExecute}
+                disabled={loadingAction}
+                className="w-full py-4 px-6 rounded-2xl font-extrabold text-xs text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-xl shadow-cyan-500/30 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loadingAction ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Procesando Ejecución del Owner...</span>
+                  </>
+                ) : (
+                  <span>🚀 Ejecutar Propuesta y Desembolsar {ethers.formatEther(proposal.amount)} ETH (Acción de Owner)</span>
+                )}
+              </button>
+            ) : (
+              <div className="p-4 rounded-2xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 text-xs font-bold text-center flex items-center justify-center gap-2">
+                <span>🔒 Propuesta Aprobada. La ejecución manual está reservada exclusivamente a la billetera del Owner ({OWNER_ADDRESS.slice(0, 6)}...{OWNER_ADDRESS.slice(-4)})</span>
+              </div>
+            )}
           </div>
         )}
 

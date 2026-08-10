@@ -290,12 +290,20 @@ contract DAOVotingTest is Test {
         vm.prank(alice);
         dao.vote(1, DAOVoting.VoteType.FOR);
 
-        // Bob es el segundo y último miembro de la DAO. Al votar A FAVOR, alcanza 100% unanimidad.
+        vm.prank(bob);
+        dao.vote(1, DAOVoting.VoteType.FOR);
+
+        // Intento de ejecución manual por un socio no-owner falla
+        vm.prank(alice);
+        vm.expectRevert("Solo el Owner de la DAO esta autorizado para ejecutar propuestas manualmente");
+        dao.executeProposal(1);
+
+        // El Owner ejecuta manualmente la propuesta aprobada por unanimidad sin esperar retardo de 1 día
         vm.expectEmit(true, false, false, true);
         emit ProposalExecuted(1, recipient, 5 ether);
 
-        vm.prank(bob);
-        dao.vote(1, DAOVoting.VoteType.FOR);
+        vm.prank(owner);
+        dao.executeProposal(1);
 
         assertEq(recipient.balance, recipientBalanceBefore + 5 ether);
 

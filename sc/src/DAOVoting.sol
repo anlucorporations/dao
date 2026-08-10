@@ -78,10 +78,13 @@ contract DAOVoting is ERC2771Context {
     );
     event FundsDeposited(address indexed from, uint256 amount);
 
+    address public owner;
+
     constructor(
         address trustedForwarder,
         uint256 _minimumBalance
     ) ERC2771Context(trustedForwarder) {
+        owner = msg.sender;
         minimumBalance = _minimumBalance;
     }
 
@@ -315,18 +318,6 @@ contract DAOVoting is ERC2771Context {
         }
 
         emit Voted(_proposalId, sender, _voteType);
-
-        // Si el 100% de los socios inscritos aprueban por unanimidad (forVotes == memberCount), se ejecuta inmediatamente
-        if (memberCount > 0 && proposal.forVotes == memberCount && !proposal.executed) {
-            require(totalDeposited >= proposal.amount, "Fondos insuficientes en la DAO para ejecucion por unanimidad");
-            proposal.executed = true;
-            totalDeposited -= proposal.amount;
-
-            (bool success, ) = proposal.recipient.call{value: proposal.amount}("");
-            require(success, "Fallo la transferencia de fondos al beneficiario por unanimidad");
-
-            emit ProposalExecuted(_proposalId, proposal.recipient, proposal.amount);
-        }
     }
 
     /**
@@ -352,9 +343,16 @@ contract DAOVoting is ERC2771Context {
     }
 
     /**
-     * @dev Ejecuta una propuesta aprobada por mayoría simple cuando expira el plazo y el retardo de seguridad.
+     * @dev Ejecuta manualmente una propuesta aprobada. Restringido exclusivamente al Owner de la DAO.
+     * Si fue aprobada por unanimidad del 100%, puede ejecutarse inmediatamente sin esperar retardo.
      */
     function executeProposal(uint256 _proposalId) external {
+        address sender = _msgSender();
+        require(
+            sender == owner,
+            "Solo el Owner de la DAO esta autorizado para ejecutar propuestas manualmente"
+        );
+
         require(
             _proposalId > 0 && _proposalId <= proposalCount,
             "ID de propuesta invalido"
@@ -367,10 +365,15 @@ contract DAOVoting is ERC2771Context {
             isVotingFinished(_proposalId),
             "El periodo de votacion no ha finalizado"
         );
-        require(
-            block.timestamp >= proposal.executionDelay,
-            "El tiempo de retardo de ejecucion no ha transcurrido"
-        );
+
+        // Si fue aprobada por unanimidad (100% de socios A FAVOR), el Owner puede ejecutarla sin esperar retardo
+        bool isUnanimous = memberCount > 0 && proposal.forVotes == memberCount;
+        if (!isUnanimous) {
+            require(
+                block.timestamp >= proposal.executionDelay,
+                "El tiempo de retardo de ejecucion no ha transcurrido"
+            );
+        }
 
         // Si la abstención es la mayoría
         if (isAbstentionMajority(_proposalId)) {

@@ -25,8 +25,23 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ProposalWithVote | null>(null);
 
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+  const OWNER_ADDRESS = process.env.NEXT_PUBLIC_OWNER_ADDRESS || '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+
   useEffect(() => {
     loadHistory();
+    async function checkOwnerStatus() {
+      try {
+        const signer = await getSigner();
+        if (signer) {
+          const addr = await signer.getAddress();
+          setIsOwner(addr.toLowerCase() === OWNER_ADDRESS.toLowerCase());
+        }
+      } catch {
+        setIsOwner(false);
+      }
+    }
+    checkOwnerStatus();
   }, []);
 
   const loadHistory = async () => {
@@ -425,22 +440,28 @@ export default function ProposalHistory({ onSelectProposal }: ProposalHistoryPro
                 {isApprovedPending && (
                   <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between">
                     <span className="text-xs text-cyan-300 font-medium">
-                      ✓ La propuesta cuenta con votos a favor suficientes para ser ejecutada.
+                      ✓ La propuesta fue aprobada y está lista para ser ejecutada.
                     </span>
-                    <button
-                      onClick={() => handleExecute(Number(prop.id))}
-                      disabled={executingId === Number(prop.id)}
-                      className="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-600/30 flex items-center gap-2"
-                    >
-                      {executingId === Number(prop.id) ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Ejecutando...</span>
-                        </>
-                      ) : (
-                        <span>🚀 Ejecutar Ahora</span>
-                      )}
-                    </button>
+                    {isOwner ? (
+                      <button
+                        onClick={() => handleExecute(Number(prop.id))}
+                        disabled={executingId === Number(prop.id)}
+                        className="px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-600/30 flex items-center gap-2"
+                      >
+                        {executingId === Number(prop.id) ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Ejecutando...</span>
+                          </>
+                        ) : (
+                          <span>🚀 Ejecutar Ahora (Owner)</span>
+                        )}
+                      </button>
+                    ) : (
+                      <span className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs font-bold">
+                        🔒 Ejecución reservada al Owner
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
